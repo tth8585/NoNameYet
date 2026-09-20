@@ -96,4 +96,45 @@ MonoBehaviour:
       min: 0
       max: 0
     chance: 1
-  onHit: []
+  - target: 0
+    radius:
+      baseValue: 0
+      step:
+        enabled: 0
+        stat: 0
+        threshold: 0
+        perStep: 0
+        stepValue: 0
+      clamp: 0
+      min: 0
+      max: 0
+    maxAllies:
+      baseValue: 0
+      step:
+        enabled: 0
+        stat: 0
+        threshold: 0
+        perStep: 0
+        stepValue: 0
+      clamp: 0
+      min: 0
+      max: 0
+    action: 1
+    effect: {fileID: 0}
+    resource: 1
+    amount:
+      baseValue: -30
+      step:
+        enabled: 0
+        stat: 0
+        threshold: 0
+        perStep: 0
+        stepValue: 0
+      clamp: 0
+      min: 0
+      max: 0
+    chance: 1
+  onHit:
+  - target: 0
+    effect: {fileID: 0}
+    chance: 0
