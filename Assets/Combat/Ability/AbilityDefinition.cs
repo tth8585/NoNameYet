@@ -18,6 +18,12 @@ namespace TTH.Combat.Ability
         SelfAndAlliesInRange
     }
 
+    public enum AbilityActivationMode
+    {
+        Instant,
+        ReservedToggle,
+    }
+
     public enum AbilityScaleStat
     {
         HP, MP, ATK, DEF, SPD, DEX, VIT, WIS
@@ -145,12 +151,19 @@ namespace TTH.Combat.Ability
     {
         [Header("Identity")]
         public string abilityId = "ability_id";
+        public AbilityTagSO[] tags;
 
         [Header("Core Params (Snapshot at cast)")]
+        public AbilityActivationMode activationMode = AbilityActivationMode.Instant;
         public AbilityParamFloat cooldown;
         public AbilityParamFloat damage;   // Archer projectile / wizard spell base damage (payload)
         public AbilityParamFloat radius;   // AoE radius (NOT ally selection radius)
         public AbilityParamFloat duration; // DoT/beam duration (future)
+        public AbilityParamFloat manaCost;
+        public AbilityParamFloat reserveManaCost;
+
+        [Header("Support Links")]
+        public SupportAbilityDefinitionSO[] supportLinks;
 
         [Header("On-Cast Actions")]
         public AbilityOnCastEffect[] onCast;

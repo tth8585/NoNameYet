@@ -27,8 +27,19 @@ namespace TTH.Combat.Ability
             if (ctx.source is not AbilityIntent intent) return;
             if (intent.definition == null) return;
 
-            // Option A: snapshot base damage from intent (CombatSystem will keep it now)
-            ctx.baseDamage = intent.baseDamage;
+            float finalDamage = intent.baseDamage;
+            if (intent.supportLinks != null)
+            {
+                for (int i = 0; i < intent.supportLinks.Length; i++)
+                {
+                    var support = intent.supportLinks[i];
+                    if (support == null || !support.Matches(intent.definition)) continue;
+                    finalDamage *= 1f + support.GetModifierValue(AbilitySupportModifierType.DamageMultiplier);
+                    finalDamage += support.GetModifierValue(AbilitySupportModifierType.FlatDamageBonus);
+                }
+            }
+
+            ctx.baseDamage = Mathf.Max(0f, finalDamage);
             ctx.hasBaseDamage = true;
 
             var list = intent.definition.onHit;

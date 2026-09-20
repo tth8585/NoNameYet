@@ -10,9 +10,11 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 790b995f50fc30947908ae6590e8a9cc, type: 3}
-  m_Name: Ability_Heal100
+  m_Name: Ability_Heal10
   m_EditorClassIdentifier: Assembly-CSharp::TTH.Combat.Ability.AbilityDefinition
-  abilityId: heal_100
+  abilityId: heal_10
+  tags: []
+  activationMode: 0
   cooldown:
     baseValue: 0
     step:
@@ -57,6 +59,29 @@ MonoBehaviour:
     clamp: 0
     min: 0
     max: 0
+  manaCost:
+    baseValue: 10
+    step:
+      enabled: 0
+      stat: 0
+      threshold: 0
+      perStep: 0
+      stepValue: 0
+    clamp: 0
+    min: 0
+    max: 0
+  reserveManaCost:
+    baseValue: 0
+    step:
+      enabled: 0
+      stat: 0
+      threshold: 0
+      perStep: 0
+      stepValue: 0
+    clamp: 0
+    min: 0
+    max: 0
+  supportLinks: []
   onCast:
   - target: 0
     radius:
@@ -85,45 +110,7 @@ MonoBehaviour:
     effect: {fileID: 0}
     resource: 0
     amount:
-      baseValue: 100
-      step:
-        enabled: 0
-        stat: 0
-        threshold: 0
-        perStep: 0
-        stepValue: 0
-      clamp: 0
-      min: 0
-      max: 0
-    chance: 1
-  - target: 0
-    radius:
-      baseValue: 0
-      step:
-        enabled: 0
-        stat: 0
-        threshold: 0
-        perStep: 0
-        stepValue: 0
-      clamp: 0
-      min: 0
-      max: 0
-    maxAllies:
-      baseValue: 0
-      step:
-        enabled: 0
-        stat: 0
-        threshold: 0
-        perStep: 0
-        stepValue: 0
-      clamp: 0
-      min: 0
-      max: 0
-    action: 1
-    effect: {fileID: 0}
-    resource: 1
-    amount:
-      baseValue: -30
+      baseValue: 10
       step:
         enabled: 0
         stat: 0

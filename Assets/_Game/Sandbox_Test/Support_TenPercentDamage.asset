@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e9ed8145c0fc5fe46b9499bcc1efecfd, type: 3}
+  m_Name: Support_TenPercentDamage
+  m_EditorClassIdentifier: Assembly-CSharp::TTH.Combat.Ability.SupportAbilityDefinitionSO
+  supportId: Support_TenPercentDamage
+  requiredTags:
+  - {fileID: 11400000, guid: 937be62a898b0b946867c01c6e5b8f80, type: 2}
+  excludedTags: []
+  modifiers:
+  - {fileID: 11400000, guid: f7b6cd5134bd7bc4b879d67585eee05e, type: 2}
+  damageMultiplier: 0.1
+  flatDamageBonus: 0
+  healMultiplier: 0
+  armorBonus: 0
+  manaCostReduction: 0
+  manaCostIncrease: 0.1
+  durationMultiplier: 1
+  cooldownReduction: 0

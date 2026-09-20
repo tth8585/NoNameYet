@@ -1,0 +1,87 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 790b995f50fc30947908ae6590e8a9cc, type: 3}
+  m_Name: Ability_ActiveTenDamage_MVP
+  m_EditorClassIdentifier: Assembly-CSharp::TTH.Combat.Ability.AbilityDefinition
+  abilityId: active_ten_damage
+  tags:
+  - {fileID: 11400000, guid: 3fcf9c21a4c0dd9458d2de6b158c6ec5, type: 2}
+  activationMode: 0
+  cooldown:
+    baseValue: 0
+    step:
+      enabled: 0
+      stat: 0
+      threshold: 0
+      perStep: 0
+      stepValue: 0
+    clamp: 0
+    min: 0
+    max: 0
+  damage:
+    baseValue: 10
+    step:
+      enabled: 0
+      stat: 0
+      threshold: 0
+      perStep: 0
+      stepValue: 0
+    clamp: 1
+    min: 0
+    max: 1000
+  radius:
+    baseValue: 0
+    step:
+      enabled: 0
+      stat: 0
+      threshold: 0
+      perStep: 0
+      stepValue: 0
+    clamp: 0
+    min: 0
+    max: 0
+  duration:
+    baseValue: 0
+    step:
+      enabled: 0
+      stat: 0
+      threshold: 0
+      perStep: 0
+      stepValue: 0
+    clamp: 0
+    min: 0
+    max: 0
+  manaCost:
+    baseValue: 10
+    step:
+      enabled: 0
+      stat: 0
+      threshold: 0
+      perStep: 0
+      stepValue: 0
+    clamp: 0
+    min: 0
+    max: 0
+  reserveManaCost:
+    baseValue: 0
+    step:
+      enabled: 0
+      stat: 0
+      threshold: 0
+      perStep: 0
+      stepValue: 0
+    clamp: 0
+    min: 0
+    max: 0
+  supportLinks: []
+  onCast: []
+  onHit: []

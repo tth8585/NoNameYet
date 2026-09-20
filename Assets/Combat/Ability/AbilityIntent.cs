@@ -29,6 +29,8 @@ namespace TTH.Combat.Ability
         public float durationSeconds;   // optional, for future DoT/beam
         public int maxAllies;           // exclude self (only meaningful for OnCast)
         public float cooldownSeconds;   // snapshot cooldown used for this cast
+        public float reservedManaCost;
+        public SupportAbilityDefinitionSO[] supportLinks;
 
         public AbilityIntent(
             AbilityDefinition def,
@@ -39,7 +41,9 @@ namespace TTH.Combat.Ability
             float onHitRadius,
             float durationSeconds,
             int maxAllies,
-            float cooldownSeconds)
+            float cooldownSeconds,
+            float reservedManaCost = 0f,
+            SupportAbilityDefinitionSO[] supportLinks = null)
         {
             this.definition = def;
             this.caster = caster;
@@ -51,6 +55,8 @@ namespace TTH.Combat.Ability
             this.durationSeconds = durationSeconds;
             this.maxAllies = maxAllies;
             this.cooldownSeconds = cooldownSeconds;
+            this.reservedManaCost = reservedManaCost;
+            this.supportLinks = supportLinks ?? Array.Empty<SupportAbilityDefinitionSO>();
         }
 
         public override string ToString()

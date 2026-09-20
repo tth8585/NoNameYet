@@ -9,255 +9,211 @@ public sealed class CharacterSystemTest : MonoBehaviour
 {
     [SerializeField] private CharacterStatsSO characterStats;
     [SerializeField] private EnemyStatsSO enemyStats;
-    [SerializeField] private AbilityDefinition healAbility;
+    [SerializeField] private AbilityDefinition activeTenDamageAbility;
+    [SerializeField] private AbilityDefinition healTenAbility;
 
-    private AttributeSystem attributes;
-    private ResourcePool resources;
-    private CombatEntity playerEntity;
+    private AttributeSystem characterAttributes;
+    private ResourcePool characterResources;
+    private CombatEntity characterEntity;
     private CombatEntity enemyEntity;
     private CombatSystem combatSystem;
     private AbilityRunner abilityRunner;
     private float enemyHealth;
-    private int turnNumber;
     private readonly List<string> eventLog = new();
-    private Vector2 scrollPosition;
-    private GUIStyle titleStyle;
-    private GUIStyle sectionStyle;
-    private GUIStyle bodyStyle;
-    private GUIStyle statusStyle;
-
-    private float MaxHealth => characterStats != null ? characterStats.MaxHealth : 0f;
-    private float MaxMana => characterStats != null ? characterStats.MaxMana : 0f;
-    private float ActionSpeed => characterStats != null ? characterStats.ActionSpeed : 0f;
 
     private void Awake()
-    {
-        BuildCharacter();
-    }
-
-    private void BuildCharacter()
-    {
-        if (characterStats == null)
         {
-            Debug.LogError("[CharacterSystemTest] Character Stats asset is not assigned.");
+            BuildRuntime();
+        }
+
+    private void BuildRuntime()
+        {
+            if (characterStats == null || enemyStats == null)
+            {
+                AddLog("Assign Character Stats and Enemy Stats in the Inspector.");
+                return;
+            }
+
+            var characterStatBlock = new StatBlock();
+            characterStatBlock.SetBase(AttributeId.ATK, characterStats.baseAttack);
+            characterStatBlock.SetBase(AttributeId.DEF, characterStats.baseDefense);
+            characterStatBlock.SetBase(AttributeId.DEX, characterStats.dexterity);
+            characterStatBlock.SetBase(AttributeId.HP, characterStats.MaxHealth);
+            characterStatBlock.SetBase(AttributeId.MP, characterStats.MaxMana);
+            characterAttributes = new AttributeSystem(characterStatBlock, null);
+            characterResources = new ResourcePool(characterStats.MaxHealth, characterStats.MaxMana);
+            characterEntity = new CombatEntity(1, characterAttributes, new StatusSystem(), null, characterResources);
+
+            var enemyStatBlock = new StatBlock();
+            enemyStatBlock.SetBase(AttributeId.ATK, enemyStats.attack);
+            enemyStatBlock.SetBase(AttributeId.DEF, enemyStats.defense);
+            enemyStatBlock.SetBase(AttributeId.DEX, enemyStats.dexterity);
+            enemyStatBlock.SetBase(AttributeId.HP, enemyStats.maxHealth);
+            enemyStatBlock.SetBase(AttributeId.MP, enemyStats.maxMana);
+            var enemyAttributes = new AttributeSystem(enemyStatBlock, null);
+            var enemyResources = new ResourcePool(enemyStats.maxHealth, enemyStats.maxMana);
+            enemyEntity = new CombatEntity(2, enemyAttributes, new StatusSystem(), null, enemyResources);
+
+            combatSystem = new CombatSystem(
+                new CombatEvents(),
+                new AbilityEffectProc(null, null));
+            abilityRunner = new AbilityRunner(characterEntity);
+            enemyHealth = enemyResources.CurrentHP;
+            eventLog.Clear();
+            AddLog("Runtime initialized.");
+        }
+
+    private void CastTenDamageAbility()
+        {
+            if (activeTenDamageAbility == null)
+            {
+                AddLog("Assign Ability_ActiveTenDamage_MVP in the Inspector.");
+                return;
+            }
+
+            if (characterEntity == null || enemyEntity == null || abilityRunner == null)
+            {
+                AddLog("Assign Character Stats and Enemy Stats, then press Reset.");
+                return;
+            }
+
+            if (!abilityRunner.CanUse(activeTenDamageAbility))
+            {
+                AddLog($"Cannot cast. Current MP: {characterResources.CurrentMP:0}.");
+                return;
+            }
+
+            var enemyHPBefore = enemyEntity.Resources.CurrentHP;
+            var manaBefore = characterResources.CurrentMP;
+            var intent = abilityRunner.UseAndCreateIntent(activeTenDamageAbility, Vector3.zero);
+            if (intent == null)
+            {
+                AddLog("Ability cast failed.");
+                return;
+            }
+
+            var result = combatSystem.HandleHit(new HitEvent(characterEntity, enemyEntity, Vector2.zero, intent));
+            enemyHealth = enemyEntity.Resources.CurrentHP;
+            var actualDamage = enemyHPBefore - enemyHealth;
+            AddLog($"Cast {activeTenDamageAbility.abilityId}: damage {actualDamage:0}, MP {manaBefore:0} -> {characterResources.CurrentMP:0}, enemy HP {enemyHPBefore:0} -> {enemyHealth:0}.");
+            Debug.Log($"[CharacterSystemTest] Ability result: {result.finalDamage:0} damage.");
+        }
+
+    private void CastHealTenAbility()
+    {
+        if (healTenAbility == null)
+        {
+            AddLog("Assign Ability_Heal10 in the Inspector.");
             return;
         }
 
-        if (enemyStats == null)
+        if (characterEntity == null || abilityRunner == null)
         {
-            Debug.LogError("[CharacterSystemTest] Enemy Stats asset is not assigned.");
+            AddLog("Assign Character Stats and Enemy Stats, then press Reset.");
             return;
         }
 
-        var stats = new StatBlock();
-        stats.SetBase(AttributeId.ATK, characterStats.baseAttack);
-        stats.SetBase(AttributeId.DEF, characterStats.baseDefense);
-        stats.SetBase(AttributeId.DEX, characterStats.dexterity);
-        stats.SetBase(AttributeId.HP, MaxHealth);
-        stats.SetBase(AttributeId.MP, MaxMana);
-        attributes = new AttributeSystem(stats, null);
-        resources = new ResourcePool(MaxHealth, MaxMana);
-        playerEntity = new CombatEntity(1, attributes, new StatusSystem(), null, resources);
-
-        var enemyStatBlock = new StatBlock();
-        enemyStatBlock.SetBase(AttributeId.HP, enemyStats.maxHealth);
-        enemyStatBlock.SetBase(AttributeId.MP, enemyStats.maxMana);
-        enemyStatBlock.SetBase(AttributeId.ATK, enemyStats.attack);
-        enemyStatBlock.SetBase(AttributeId.DEF, enemyStats.defense);
-        enemyStatBlock.SetBase(AttributeId.DEX, enemyStats.dexterity);
-        var enemyAttributes = new AttributeSystem(enemyStatBlock, null);
-        var enemyResources = new ResourcePool(enemyStats.maxHealth, enemyStats.maxMana);
-        enemyEntity = new CombatEntity(2, enemyAttributes, new StatusSystem(), null, enemyResources);
-
-        enemyHealth = enemyStats.maxHealth;
-        combatSystem = new CombatSystem(new CombatEvents());
-        abilityRunner = new AbilityRunner(playerEntity);
-        turnNumber = 1;
-        eventLog.Clear();
-        AddLog("Character initialized without relic effects.");
-        AddLog("DEX affects action speed only; ATK and DEF remain independent.");
-    }
-
-    private void ReceiveDamage(float incomingDamage)
-    {
-        var before = resources.CurrentHP;
-        combatSystem.HandleHit(new HitEvent(
-            enemyEntity,
-            playerEntity,
-            Vector2.zero,
-            new CharacterTestAttack(incomingDamage)));
-        var actualDamage = before - resources.CurrentHP;
-        if (actualDamage > 0f)
+        if (!abilityRunner.CanUse(healTenAbility))
         {
-            AddLog($"Received {actualDamage:0} damage.");
-        }
-        else
-        {
-            AddLog("Received 0 damage.");
-        }
-    }
-
-    private void DealDamage(float multiplier, string actionName)
-    {
-        var baseDamage = attributes.Get(AttributeId.ATK) * multiplier;
-        var result = combatSystem.HandleHit(new HitEvent(
-            playerEntity,
-            enemyEntity,
-            Vector2.zero,
-            new CharacterTestAttack(baseDamage)));
-        enemyHealth = enemyEntity.Resources.CurrentHP;
-        AddLog($"{actionName}: {result.finalDamage:0} damage.");
-    }
-
-    private void Heal()
-    {
-        var before = resources.CurrentHP;
-        resources.ApplyHPDelta(20f);
-        resources.ClampToMax(attributes);
-        AddLog($"Healed {resources.CurrentHP - before:0}.");
-    }
-
-    private void CastHealAbility()
-    {
-        if (healAbility == null)
-        {
-            AddLog("Assign a Heal Ability asset first.");
+            AddLog($"Cannot cast heal. Current MP: {characterResources.CurrentMP:0}.");
             return;
         }
 
-        if (!abilityRunner.CanUse(healAbility))
+        var hpBefore = characterResources.CurrentHP;
+        var manaBefore = characterResources.CurrentMP;
+        var intent = abilityRunner.UseAndCreateIntent(healTenAbility, Vector3.zero);
+        if (intent == null)
         {
-            AddLog("Heal ability is on cooldown.");
+            AddLog("Heal cast failed.");
             return;
         }
 
-        var before = resources.CurrentHP;
-        var intent = abilityRunner.UseAndCreateIntent(healAbility, Vector3.zero);
-        var result = combatSystem.HandleHit(new HitEvent(
-            playerEntity,
-            enemyEntity,
-            Vector2.zero,
-            intent));
-
-        AddLog($"{healAbility.abilityId}: healed {resources.CurrentHP - before:0} HP; combat resolved {result.finalDamage:0} damage.");
+        combatSystem.HandleHit(new HitEvent(characterEntity, enemyEntity, Vector2.zero, intent));
+        AddLog($"Cast {healTenAbility.abilityId}: healed {characterResources.CurrentHP - hpBefore:0}, MP {manaBefore:0} -> {characterResources.CurrentMP:0}.");
     }
 
-    private void BeginTurn()
+    private void TakeCharacterDamage()
     {
-        turnNumber++;
-        var before = resources.CurrentHP;
-        var enemyHealthBefore = enemyEntity.Resources.CurrentHP;
-        combatSystem.HandleTurnStart(enemyEntity);
-        combatSystem.HandleTurnStart(playerEntity);
-        enemyHealth = enemyEntity.Resources.CurrentHP;
-        AddLog($"Turn {turnNumber}: player healed {resources.CurrentHP - before:0} HP; enemy lost {enemyHealthBefore - enemyHealth:0} HP.");
-    }
-
-    private void RunAssertions()
-    {
-        var passed = 0;
-        var failed = 0;
-        Check("STR -> Max HP", Mathf.Approximately(attributes.Get(AttributeId.HP), characterStats.MaxHealth), ref passed, ref failed);
-        Check("INT -> Max MP", Mathf.Approximately(attributes.Get(AttributeId.MP), characterStats.MaxMana), ref passed, ref failed);
-        Check("DEX -> Action Speed", Mathf.Approximately(ActionSpeed, characterStats.dexterity), ref passed, ref failed);
-        Check("ATK independent from DEX", Mathf.Approximately(attributes.Get(AttributeId.ATK), characterStats.baseAttack), ref passed, ref failed);
-        Check("DEF independent from DEX", Mathf.Approximately(attributes.Get(AttributeId.DEF), characterStats.baseDefense), ref passed, ref failed);
-        ReceiveDamage(15f);
-        Check("Damage is applied to the player", resources.CurrentHP < characterStats.MaxHealth, ref passed, ref failed);
-        var healthAfterDamage = resources.CurrentHP;
-        var enemyHealthBeforeAttack = enemyHealth;
-        DealDamage(1f, "Assertion attack");
-        Check("Enemy receives direct damage", enemyHealthBeforeAttack > enemyHealth, ref passed, ref failed);
-        Check("Turn heal offsets some damage", Mathf.Approximately(resources.CurrentHP, healthAfterDamage) || resources.CurrentHP > healthAfterDamage, ref passed, ref failed);
-        AddLog($"Assertions: {passed} passed, {failed} failed.");
-    }
-
-    private static void Check(string label, bool condition, ref int passed, ref int failed)
-    {
-        if (condition)
+        if (characterResources == null || characterAttributes == null)
         {
-            passed++;
-            Debug.Log($"[CharacterSystemTest] PASS: {label}");
+            AddLog("Assign Character Stats, then press Reset Runtime.");
+            return;
         }
-        else
-        {
-            failed++;
-            Debug.LogError($"[CharacterSystemTest] FAIL: {label}");
-        }
+
+        var hpBefore = characterResources.CurrentHP;
+        characterResources.ApplyHPDelta(-50f);
+        characterResources.ClampToMax(characterAttributes);
+        AddLog($"Character took {hpBefore - characterResources.CurrentHP:0} damage. HP {hpBefore:0} -> {characterResources.CurrentHP:0}.");
     }
+
+    private void OnGUI()
+        {
+            GUILayout.BeginArea(new Rect(20f, 20f, 520f, 520f));
+            GUILayout.BeginVertical("box");
+            GUILayout.Label("Ability Test");
+            GUILayout.Label(characterStats != null && characterResources != null
+                ? $"Character HP {characterResources.CurrentHP:0}/{characterStats.MaxHealth:0} | MP {characterResources.CurrentMP:0}/{characterStats.MaxMana:0}"
+                : "Character Stats is not assigned.");
+            GUILayout.Label(enemyStats != null
+                ? $"Enemy Max HP {enemyStats.maxHealth:0} | DEF {enemyStats.defense:0}"
+                : "Enemy Stats is not assigned.");
+            GUILayout.Label(activeTenDamageAbility != null
+                ? $"Ability {activeTenDamageAbility.abilityId} | Cost {activeTenDamageAbility.manaCost.baseValue:0} MP | Damage {activeTenDamageAbility.damage.baseValue:0}"
+                : "Ability_ActiveTenDamage_MVP is not assigned.");
+            GUILayout.Label(healTenAbility != null
+                ? $"Heal {healTenAbility.abilityId} | Amount {GetHealAmount():0}"
+                : "Ability_Heal10 is not assigned.");
+
+            GUILayout.Space(8f);
+            GUILayout.Label($"Current MP: {(characterResources != null ? characterResources.CurrentMP : 0f):0}");
+            GUILayout.Label($"Enemy HP: {(enemyEntity != null ? enemyEntity.Resources.CurrentHP : 0f):0}");
+
+            if (GUILayout.Button("Cast Ability", GUILayout.Height(40f)))
+                CastTenDamageAbility();
+            if (GUILayout.Button("Cast Heal Ability", GUILayout.Height(40f)))
+                CastHealTenAbility();
+            if (GUILayout.Button("Take 50 Damage", GUILayout.Height(40f)))
+                TakeCharacterDamage();
+            if (GUILayout.Button("Reset Runtime", GUILayout.Height(32f)))
+                BuildRuntime();
+
+            GUILayout.Space(8f);
+            GUILayout.Label("Event Log");
+            foreach (var message in eventLog)
+                GUILayout.Label(message);
+            GUILayout.EndVertical();
+            GUILayout.EndArea();
+        }
 
     private void AddLog(string message)
     {
         eventLog.Insert(0, message);
-        if (eventLog.Count > 8) eventLog.RemoveAt(eventLog.Count - 1);
+        if (eventLog.Count > 6)
+            eventLog.RemoveAt(eventLog.Count - 1);
     }
 
-    private void OnGUI()
+    private float GetHealAmount()
     {
-        if (attributes == null || resources == null) BuildCharacter();
-        if (attributes == null || resources == null) return;
-        EnsureStyles();
-        var panelWidth = Mathf.Min(Screen.width - 40f, 900f);
-        GUILayout.BeginArea(new Rect(20f, 20f, panelWidth, Screen.height - 40f));
-        scrollPosition = GUILayout.BeginScrollView(scrollPosition, GUILayout.Width(panelWidth), GUILayout.Height(Screen.height - 40f));
-        GUILayout.BeginVertical("box");
-        GUILayout.Label("CHARACTER SYSTEM MVP TEST", titleStyle);
-        GUILayout.Label("One character / three primary stats / no relics", bodyStyle);
-        GUILayout.EndVertical();
+        if (healTenAbility == null || healTenAbility.onCast == null) return 0f;
+        for (int i = 0; i < healTenAbility.onCast.Length; i++)
+        {
+            var effect = healTenAbility.onCast[i];
+            if (effect != null && effect.action == AbilityOnCastActionKind.ResourceDelta && effect.resource == AbilityResourceType.HP)
+            {
+                var multiplier = 1f;
+                if (healTenAbility.supportLinks != null)
+                {
+                    for (int supportIndex = 0; supportIndex < healTenAbility.supportLinks.Length; supportIndex++)
+                    {
+                        var support = healTenAbility.supportLinks[supportIndex];
+                        if (support != null && support.Matches(healTenAbility))
+                            multiplier += support.GetModifierValue(AbilitySupportModifierType.HealMultiplier);
+                    }
+                }
 
-        DrawStats();
-        DrawControls();
-        DrawLog();
-        GUILayout.EndScrollView();
-        GUILayout.EndArea();
-    }
-
-    private void DrawStats()
-    {
-        GUILayout.Label("Character Stats", sectionStyle);
-        GUILayout.BeginVertical("box");
-        GUILayout.Label($"STR  {characterStats.strength:0}   ->   Max HP  {attributes.Get(AttributeId.HP):0}", bodyStyle);
-        GUILayout.Label($"INT  {characterStats.intelligence:0}   ->   Max MP  {attributes.Get(AttributeId.MP):0}", bodyStyle);
-        GUILayout.Label($"DEX  {characterStats.dexterity:0}   ->   Action Speed  {ActionSpeed:0}", bodyStyle);
-        GUILayout.Space(4);
-        GUILayout.Label($"ATK  {attributes.Get(AttributeId.ATK):0}   (independent from DEX)", bodyStyle);
-        GUILayout.Label($"DEF  {attributes.Get(AttributeId.DEF):0}   (independent from DEX)", bodyStyle);
-        GUILayout.Label($"Turn {turnNumber}      HP   {resources.CurrentHP:0} / {attributes.Get(AttributeId.HP):0}      MP   {resources.CurrentMP:0} / {attributes.Get(AttributeId.MP):0}", bodyStyle);
-        GUILayout.Label($"Enemy HP   {enemyHealth:0} / {enemyStats.maxHealth:0}", bodyStyle);
-        GUILayout.EndVertical();
-    }
-
-    private void DrawControls()
-    {
-        GUILayout.Label("Manual Checks", sectionStyle);
-        GUILayout.BeginHorizontal();
-        if (GUILayout.Button("Receive 15 Damage", GUILayout.Height(36))) ReceiveDamage(15f);
-        if (GUILayout.Button("Basic Attack", GUILayout.Height(36))) DealDamage(1f, "Basic Attack");
-        if (GUILayout.Button("Heavy Attack", GUILayout.Height(36))) DealDamage(2f, "Heavy Attack");
-        if (GUILayout.Button("Next Turn", GUILayout.Height(36))) BeginTurn();
-        GUILayout.EndHorizontal();
-        GUILayout.BeginHorizontal();
-        if (GUILayout.Button("Heal 20", GUILayout.Height(32))) Heal();
-        if (GUILayout.Button("Cast Heal Ability", GUILayout.Height(32))) CastHealAbility();
-        if (GUILayout.Button("Run Assertions", GUILayout.Height(32))) RunAssertions();
-        if (GUILayout.Button("Reset", GUILayout.Height(32))) BuildCharacter();
-        GUILayout.EndHorizontal();
-    }
-
-    private void DrawLog()
-    {
-        GUILayout.Label("Event Log", sectionStyle);
-        GUILayout.BeginVertical("box");
-        foreach (var message in eventLog) GUILayout.Label(message, bodyStyle);
-        GUILayout.EndVertical();
-    }
-
-    private void EnsureStyles()
-    {
-        if (titleStyle != null) return;
-        titleStyle = new GUIStyle(GUI.skin.label) { fontSize = 24, fontStyle = FontStyle.Bold };
-        sectionStyle = new GUIStyle(GUI.skin.label) { fontSize = 18, fontStyle = FontStyle.Bold };
-        bodyStyle = new GUIStyle(GUI.skin.label) { fontSize = 16, wordWrap = true };
-        statusStyle = new GUIStyle(bodyStyle) { fontStyle = FontStyle.Bold };
+                return effect.amount.baseValue * Mathf.Max(0f, multiplier);
+            }
+        }
+        return 0f;
     }
 }
