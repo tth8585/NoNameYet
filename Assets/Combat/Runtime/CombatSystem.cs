@@ -21,6 +21,18 @@ namespace TTH.Combat.Runtime
 
         public CombatEvents Events => _events;
 
+        public void HandleTurnStart(CombatEntity actor)
+        {
+            if (actor == null) return;
+            _proc?.OnTurnStart(actor);
+        }
+
+        public void HandleTurnEnd(CombatEntity actor)
+        {
+            if (actor == null) return;
+            _proc?.OnTurnEnd(actor);
+        }
+
         public DamageContext HandleHit(in HitEvent hit, DamageKind kind = DamageKind.Direct)
         {
             var ctx = new DamageContext
@@ -83,7 +95,7 @@ namespace TTH.Combat.Runtime
 
             // --- Calc base damage fallback ---
             // If no payload/proc provided baseDamage, fallback to ATK (MVP "weapon/basic attack")
-            if (ctx.baseDamage <= 0f)
+            if (!ctx.hasBaseDamage && ctx.baseDamage <= 0f)
                 ctx.baseDamage = Math.Max(0f, ctx.atk);
 
             // --- Mitigation (MVP): minus DEF ---

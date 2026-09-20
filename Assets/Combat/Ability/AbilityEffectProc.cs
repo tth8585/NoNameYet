@@ -28,8 +28,8 @@ namespace TTH.Combat.Ability
             if (intent.definition == null) return;
 
             // Option A: snapshot base damage from intent (CombatSystem will keep it now)
-            if (intent.baseDamage > 0f)
-                ctx.baseDamage = intent.baseDamage;
+            ctx.baseDamage = intent.baseDamage;
+            ctx.hasBaseDamage = true;
 
             var list = intent.definition.onHit;
             if (list == null || list.Length == 0) return;
@@ -56,6 +56,16 @@ namespace TTH.Combat.Ability
         {
             // MVP: để trống.
             // Lifesteal / on-kill / on-damage-confirmed sẽ ở đây sau.
+        }
+
+        public void OnTurnStart(CombatEntity actor)
+        {
+            // Abilities do not own turn-start passive behavior.
+        }
+
+        public void OnTurnEnd(CombatEntity actor)
+        {
+            // Abilities do not own turn-end passive behavior.
         }
     }
 }

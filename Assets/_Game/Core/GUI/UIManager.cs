@@ -6,6 +6,7 @@ public enum UIID
     HomeView,
     ShopView,
     SettingView,
+    BattleView,
     // Popups
     SettingsPopup,
     WinPopup,

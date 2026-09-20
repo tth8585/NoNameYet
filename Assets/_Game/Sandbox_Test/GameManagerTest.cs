@@ -6,7 +6,7 @@ public class GameManagerTest : MonoBehaviour
     void Start()
     {
 
-        UIManager.Instance.ShowView(UIID.Testview1);
+        UIManager.Instance.ShowView(UIID.HomeView);
     }
 
     // Update is called once per frame

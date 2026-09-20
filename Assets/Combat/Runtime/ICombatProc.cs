@@ -7,5 +7,7 @@ namespace TTH.Combat.Runtime
     {
         void OnHit(ref DamageContext ctx, CombatEntity attacker, CombatEntity defender);
         void AfterHit(ref DamageContext ctx, CombatEntity attacker, CombatEntity defender);
+        void OnTurnStart(CombatEntity actor);
+        void OnTurnEnd(CombatEntity actor);
     }
 }

@@ -39,5 +39,15 @@ namespace TTH.Combat.Effects
         {
             // optional: after-hit effects
         }
+
+        public void OnTurnStart(CombatEntity actor)
+        {
+            // Effects with turn timing are handled by their status system.
+        }
+
+        public void OnTurnEnd(CombatEntity actor)
+        {
+            // Effects with turn timing are handled by their status system.
+        }
     }
 }

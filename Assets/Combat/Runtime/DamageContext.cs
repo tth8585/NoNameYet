@@ -48,6 +48,7 @@ namespace TTH.Combat.Runtime
 
         // Computation
         public float baseDamage;
+        public bool hasBaseDamage;
         public float mitigatedDamage;
         public float finalDamage;       // min = 0 in your rule
         public float hpDeltaApplied;    // usually -finalDamage
