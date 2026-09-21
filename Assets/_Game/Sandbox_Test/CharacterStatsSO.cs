@@ -4,19 +4,13 @@ using UnityEngine;
 public sealed class CharacterStatsSO : ScriptableObject
 {
     [Header("Primary Stats")]
-    [Min(0f)] public float strength = 10f;
-    [Min(0f)] public float intelligence = 8f;
-    [Min(0f)] public float dexterity = 12f;
+    [Min(0f)] public float hitPoints = 100f;
+    [Min(0f)] public float magicPoints = 150f;
+    [Min(0f)] public float attack = 23f;
+    [Min(0f)] public float defense = 0f;
+    [Min(0f)] public float speed = 17f;
+    [Min(0f)] public float dexterity = 17f;
+    [Min(0f)] public float vitality = 17f;
+    [Min(0f)] public float wisdom = 17f;
 
-    [Header("Independent Combat Stats")]
-    [Min(0f)] public float baseAttack = 20f;
-    [Min(0f)] public float baseDefense = 5f;
-
-    [Header("MVP Formulas")]
-    [Min(0f)] public float hpPerStrength = 10f;
-    [Min(0f)] public float mpPerIntelligence = 10f;
-
-    public float MaxHealth => strength * hpPerStrength;
-    public float MaxMana => intelligence * mpPerIntelligence;
-    public float ActionSpeed => dexterity;
 }

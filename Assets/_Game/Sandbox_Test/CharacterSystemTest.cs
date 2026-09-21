@@ -35,14 +35,14 @@ public sealed class CharacterSystemTest : MonoBehaviour
             }
 
             var characterStatBlock = new StatBlock();
-            characterStatBlock.SetBase(AttributeId.ATK, characterStats.baseAttack);
-            characterStatBlock.SetBase(AttributeId.DEF, characterStats.baseDefense);
-            characterStatBlock.SetBase(AttributeId.DEX, characterStats.dexterity);
-            characterStatBlock.SetBase(AttributeId.HP, characterStats.MaxHealth);
-            characterStatBlock.SetBase(AttributeId.MP, characterStats.MaxMana);
-            characterAttributes = new AttributeSystem(characterStatBlock, null);
-            characterResources = new ResourcePool(characterStats.MaxHealth, characterStats.MaxMana);
-            characterEntity = new CombatEntity(1, characterAttributes, new StatusSystem(), null, characterResources);
+            // characterStatBlock.SetBase(AttributeId.ATK, characterStats.baseAttack);
+            // characterStatBlock.SetBase(AttributeId.DEF, characterStats.baseDefense);
+            // characterStatBlock.SetBase(AttributeId.DEX, characterStats.dexterity);
+            // characterStatBlock.SetBase(AttributeId.HP, characterStats.MaxHealth);
+            // characterStatBlock.SetBase(AttributeId.MP, characterStats.MaxMana);
+            // characterAttributes = new AttributeSystem(characterStatBlock, null);
+            // characterResources = new ResourcePool(characterStats.MaxHealth, characterStats.MaxMana);
+            // characterEntity = new CombatEntity(1, characterAttributes, new StatusSystem(), null, characterResources);
 
             var enemyStatBlock = new StatBlock();
             enemyStatBlock.SetBase(AttributeId.ATK, enemyStats.attack);
@@ -151,9 +151,9 @@ public sealed class CharacterSystemTest : MonoBehaviour
             GUILayout.BeginArea(new Rect(20f, 20f, 520f, 520f));
             GUILayout.BeginVertical("box");
             GUILayout.Label("Ability Test");
-            GUILayout.Label(characterStats != null && characterResources != null
-                ? $"Character HP {characterResources.CurrentHP:0}/{characterStats.MaxHealth:0} | MP {characterResources.CurrentMP:0}/{characterStats.MaxMana:0}"
-                : "Character Stats is not assigned.");
+            // GUILayout.Label(characterStats != null && characterResources != null
+            //     ? $"Character HP {characterResources.CurrentHP:0}/{characterStats.MaxHealth:0} | MP {characterResources.CurrentMP:0}/{characterStats.MaxMana:0}"
+            //     : "Character Stats is not assigned.");
             GUILayout.Label(enemyStats != null
                 ? $"Enemy Max HP {enemyStats.maxHealth:0} | DEF {enemyStats.defense:0}"
                 : "Enemy Stats is not assigned.");

@@ -12,10 +12,8 @@ public enum UIID
     WinPopup,
     LosePopup,
 
-    //test
-    TestPopup,
-    TestPopup1, TestView,
-    Testview1,
+    CharacterPanelView,
+    InventoryView
 }
 
 public class UIManager : ManualSingletonMono<UIManager>
