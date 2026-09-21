@@ -1,6 +1,6 @@
 namespace TTH.Combat.Attributes
 {
-    // Primary Attributes (ROTMG-like)
+    // ROTMG-style primary and combat attributes.
     public enum AttributeId
     {
         HP,

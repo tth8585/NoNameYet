@@ -271,7 +271,7 @@ namespace TTH.Combat.Tests
 
             var attributes = new AttributeSystem(stats, caps);
             var statuses = new StatusSystem();
-            var derived = new DerivedStatSystem(attributes, statuses, null);  // cfg can be null
+            var derived = new DerivedStatSystem(attributes, statuses, (DerivedStatsConfigSO)null);  // cfg can be null
             var resources = new ResourcePool(baseHP, baseMP);
 
             return new CombatEntity(id, attributes, statuses, derived, resources);

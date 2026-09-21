@@ -1,0 +1,43 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 348354a3bc2309b40b0a046354100d74, type: 3}
+  m_Name: Item_rusty_sword
+  m_EditorClassIdentifier: Assembly-CSharp::TTH.Game.Inventory.ItemDefinitionSO
+  itemId: rusty_sword
+  displayName: Rusty Sword
+  description: 
+  icon: {fileID: 0}
+  itemType: 0
+  rarity: 0
+  maxStack: 1
+  tags:
+  - Weapon
+  - Sword
+  sellValue: 0
+  equipmentSlotId: Weapon
+  equippedModifiers:
+  - Attribute: 2
+    Op: 0
+    Value: 5
+    SourceType: 1
+    Order: 0
+    Stacking: 0
+    StackKey: 
+    DurationSeconds: 0
+  randomAffixPool: []
+  randomAffixRules:
+    minRandomAffixes: 2
+    maxRandomAffixes: 4
+    minPrefixAffixes: 2
+    maxPrefixAffixes: 2
+    minSuffixAffixes: 0
+    maxSuffixAffixes: 2

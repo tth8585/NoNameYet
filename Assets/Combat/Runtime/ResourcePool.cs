@@ -68,6 +68,7 @@ namespace TTH.Combat.Runtime
             if (CurrentMP > maxMP) SetMP(maxMP);
         }
 
+
         /// <summary>
         /// Initialize current resources to MAX (e.g., spawn / respawn).
         /// </summary>

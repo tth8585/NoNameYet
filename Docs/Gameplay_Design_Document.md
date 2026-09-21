@@ -318,6 +318,8 @@ Quy tac:
 - Item quest khong duoc mat neu inventory day; phai co error state va cach xu ly ro rang.
 - Auto-pickup chi nhat item trong whitelist/cau hinh, khong tu y nhat item quest neu quest chua active.
 - Loot roll khong ghi vao `ItemDefinition`; ket qua roll nam trong `ItemInstance`.
+- Item duoc tao boi craft hoac loot phai duoc roll thanh `ItemInstance` mot lan truoc khi vao inventory.
+- Moi lan roll phai co seed hoac roll metadata de debug va khong roll lai khi scene reload.
 
 ### ItemDefinition: static data
 
@@ -329,16 +331,59 @@ displayName            ten hien thi
 description            mo ta
 icon                   icon inventory/world drop
 itemType               Equipment, Consumable, Quest, Currency, Material
-rarity                 Common, Uncommon, Rare, Epic, Legendary
+rarity                 Common, Magic, Rare, Legendary
 tags                   Weapon, Fire, Quest, Material, ...
 maxStack               gioi han stack; equipment thuong la 1
 inventoryWidth/Height  dung neu sau nay co grid inventory
-modifierProviders      cac modifier khi item active/equipped
-useActions             action khi dung item
+fixedAffixes            option co dinh theo archetype item
+randomAffixPool         tham chieu den `RandomAffixPoolSO`
+randomAffixRules        so luong prefix/suffix, tier, weight va dieu kien roll
+useActions              action khi dung item
 sellValue               gia ban neu item cho phep ban
 ```
 
-Definition khong chua `quantity`, `isEquipped`, durability cua mot item cu the hay rolled stat.
+`ItemDefinition` co the chua cac option co dinh dac thu cua item, nhung khong chua ket qua roll cua mot item cu the.
+
+Vi du fixed affixes theo item archetype:
+
+```text
+Weapon  -> damage / attack speed / weapon range tuy loai vu khi
+Armor   -> defense / max HP / resistance tuy loai ao giap
+Ring    -> khong bat buoc co fixed combat stat
+Potion  -> use action va effect definition
+Quest   -> quest tag va ownership rule
+```
+
+`fixedAffixes` la modifier co dinh cua moi item instance cung definition. `randomAffixPool` va `randomAffixRules` chi la rule de tao ket qua; khong duoc doc truc tiep de tinh stat sau khi item da duoc roll.
+
+`RandomAffixPoolSO` la asset co the tai su dung:
+
+```text
+RandomAffixPoolSO
+├── prefixAffixAssets[] -> AffixDefinitionSO
+└── suffixAffixAssets[] -> AffixDefinitionSO
+```
+
+`AffixDefinitionSO` la asset dung chung cho mot affix family/option:
+
+```text
+Affix_Int.asset
+Affix_Str.asset
+Affix_Dex.asset
+Affix_AttackSpeed.asset
+```
+
+Vi du `Affix_Int.asset` co the duoc keo vao ca `Weapon_AffixPool`, `Armor_AffixPool` va `Ring_AffixPool`. Designer chi nhap tier/value/weight mot lan. Pool chi quan ly danh sach affix duoc phep xuat hien cho archetype do.
+
+Workflow cua game designer:
+
+1. Tao asset `Create -> TTH -> Game -> Inventory -> Random Affix Pool`.
+2. Tao cac asset `AffixDefinitionSO` cho option dung chung, sau do cau hinh tier/value/weight mot lan.
+3. Keo cac `AffixDefinitionSO` vao dung list Prefix hoac Suffix cua pool.
+4. Mo `ItemDefinitionSO` va keo `RandomAffixPoolSO` vao field `Random Affix Pool`.
+5. Cau hinh so luong affix trong `RandomAffixRules` cua item.
+
+Mot pool co the duoc dung cho nhieu weapon. Pool weapon chung co the tai su dung; pool rieng cua item chi can tao khi item co candidate hoac weight khac. Duplicate `affixFamilyId` trong cung mot slot phai bi bao canh bao trong Inspector.
 
 ### ItemInstance: mutable state
 
@@ -347,20 +392,145 @@ instanceId             ID duy nhat cua instance
 definitionId           tham chieu den ItemDefinition
 quantity               so luong trong stack
 level                  cap item neu co
-rolledValues           gia tri random cua item
+fixedAffixValues       gia tri fixed da snapshot neu co scaling theo item level
+randomAffixes          danh sach affix da roll, gom affixId, affixFamilyId, slotType, tier va value
+rollSeed               seed hoac roll id dung de audit/debug
 durability             do ben neu co
 isEquipped             trang thai trang bi
 boundState             item bound character/account hay khong
 acquiredAt             debug / analytics / save metadata
 ```
 
+Affix va roll:
+
+- Craft va loot goi cung mot `ItemRollService`, khong tu roll rieng trong UI, inventory hay monster.
+- `ItemRollService` doc fixed affixes, random affix pool, rarity va roll rules de tao `ItemInstance`.
+- Fixed affix luon co neu item archetype yeu cau; random affix co the khong co neu roll rules cho phep.
+- Moi random affix phai luu `affixId`, `tier`, `value` va nguon roll trong instance.
+- Sau khi roll, stat cua item chi doc snapshot trong instance; khong roll lai khi equip, load scene, save/load hoac rebuild modifier.
+- Craft co the truyen recipe, material quality va guaranteed affix rules vao `ItemRollService`.
+- Loot co the truyen loot table, monster tier, area level va rarity budget vao `ItemRollService`.
+- Khong mutate `ItemDefinition`, affix definition hay random pool trong runtime.
+
 Stacking:
 
-- Material va consumable co the stack neu cung `definitionId` va cung rolled state.
-- Equipment co rolled values khac nhau khong duoc stack.
+- Material va consumable co the stack neu cung `definitionId`, cung fixed state, cung random affix state va cung rolled state.
+- Equipment co bat ky random affix nao khac nhau khong duoc stack.
 - Item bound khong duoc merge voi item non-bound.
 - Merge stack phai xac dinh instance nao giu ID va metadata.
 - `instanceId` khong duoc tao lai khi load save.
+
+### Affix definition va roll rule
+
+Affix la data asset rieng, khong nam truc tiep trong item instance:
+
+```text
+AffixDefinition
+affixId
+affixFamilyId
+displayName
+slotType                Prefix hoac Suffix
+tags
+targetItemTags
+effectType              Attribute hoac Gameplay
+attributeId             neu effectType = Attribute
+modifierOperation       Add hoac Multiply
+tiers[]
+
+AffixTier
+tierId
+minValue / maxValue
+weight
+requiredLevel
+```
+
+Trong Unity, `AffixDefinitionSO` la asset chuan nam trong `RandomAffixPoolSO`, khong can tao lai option khi dung cho pool khac. Moi tier nam trong affix asset do va duoc tai su dung qua reference.
+
+`displayName` chi dung cho UI. Affix logic phai dung `effectType`, `attributeId` va `modifierOperation`; khong duoc parse text de suy ra stat.
+
+`affixId` la ID cua mot option cu the. `affixFamilyId` la nhom loai tru nhau trong cung item. Vi du cac tier `FireDamageFlat_T1`, `FireDamageFlat_T2` va `FireDamageFlat_T3` co the co `affixId` khac nhau nhung phai cung `affixFamilyId = FireDamageFlat`; item chi duoc co mot family nay.
+
+```text
+AffixSlotType = Prefix | Suffix
+DuplicatePolicy = UniqueByAffixFamily
+```
+
+`RandomAffixRules` cua item hoac loot/craft recipe xac dinh:
+
+```text
+minRandomAffixes / maxRandomAffixes
+minPrefixAffixes / maxPrefixAffixes
+minSuffixAffixes / maxSuffixAffixes
+allowedAffixTags
+excludedAffixTags
+allowedTiers
+rarityWeights
+duplicatePolicy
+guaranteedAffixes
+```
+
+Rule phai validate required/excluded tags truoc khi roll. Affix da roll phai tuong thich voi item archetype; vi du affix `FireDamageFlat` co the yeu cau tag `Weapon` va khong ap dung cho ring neu design khong cho phep.
+
+Rule MVP de xuat:
+
+```text
+minRandomAffixes = 1
+maxRandomAffixes = 4
+minPrefixAffixes = 0
+maxPrefixAffixes = 2
+minSuffixAffixes = 0
+maxSuffixAffixes = 2
+duplicatePolicy = UniqueByAffixFamily
+```
+
+Moi item co the co 0-2 prefix va 0-2 suffix, nhung tong so random affix phai tu 1 den 4. He thong phai chon mot cap prefix/suffix hop le truoc khi roll, khong roll hai slot doc lap roi retry vo han.
+
+Rarity duoc suy ra tu tong so random affix va snapshot vao `ItemInstance`:
+
+```text
+1 affix -> Common
+2 affix -> Magic
+3 affix -> Rare
+4 affix -> Legendary
+```
+
+Magic item co invariant bat buoc:
+
+```text
+Magic = 1 prefix + 1 suffix
+```
+
+Khong hop le neu item co 2 prefix, 2 suffix hoac mot slot rong. Roll service phai loai cac cap slot nay truoc khi chon affix.
+
+`ItemDefinition` van co the khai bao rarity base/archetype de lam data metadata, nhung rarity cua item cu the sau craft/loot la `rolledRarity` trong `ItemInstance`.
+
+### Affix roll algorithm
+
+`ItemRollService` phai roll theo mot pipeline duy nhat:
+
+```text
+Validate item tags, rarity va roll budget
+    -> Build candidate prefix pool
+    -> Build candidate suffix pool
+    -> Apply guaranteed affixes truoc
+    -> Chon prefix count trong min/max
+    -> Chon suffix count trong min/max
+    -> Chon affix theo weight, moi affixFamilyId chi mot lan
+    -> Chon tier va value trong tier range
+    -> Validate total/prefix/suffix count va family uniqueness
+    -> Snapshot ket qua vao ItemInstance
+```
+
+Quy tac bat buoc:
+
+- Khong duoc so sanh trung lap bang `affixId` don thuan; phai unique theo `affixFamilyId`.
+- Guaranteed affix chiem mot slot prefix/suffix va cung bi kiem tra trung family.
+- Tong so affix sau khi roll phai nam trong khoang 1-4; rarity duoc gan theo tong so nay.
+- Neu tong so affix la 2, shape bat buoc la 1 prefix va 1 suffix de tao Magic item.
+- Khong du candidate pool hop le thi roll fail co ly do ro rang; khong retry vo han.
+- Neu roll fail do recipe/loot rule thieu candidate, craft/loot khong duoc tao item khong hop le.
+- Random affix duoc chon theo weight; tier value duoc roll doc lap trong range cua tier da chon.
+- Seed/roll metadata phai duoc luu de replay va debug ket qua roll.
 
 ### Inventory container
 
@@ -421,23 +591,60 @@ Neu item co heal/damage, effect van di qua combat/effect pipeline hien tai. Inve
 
 ### Item modifier provider
 
-Item cung cap modifier qua danh sach provider/modifier asset:
+Item cung cap modifier qua fixed affixes va random affixes da snapshot:
 
 ```text
 ItemDefinition
-└── modifierProviders[]
-        -> AttributeModifier hoac GameplayModifier
+├── fixedAffixes[]
+└── randomAffixRules
+
+ItemInstance
+├── fixedAffixValues[]
+└── randomAffixes[]
+    -> AttributeModifier hoac GameplayModifier
 ```
 
-Khi item equipped, provider tao runtime modifier voi:
+`AffixModifierBridge` chuyen affix snapshot thanh runtime modifier:
+
+```text
+random affix Attribute
+    -> AffixModifierBridge
+    -> AttributeModifier(AttributeId, Operation, Value)
+    -> AttributeSystem
+```
+
+Bridge gan `Source = ItemInstance` de unequip dung item chi remove modifier cua item do. Affix `Gameplay` khong duoc ep vao `AttributeId`; no di qua gameplay modifier context rieng.
+
+Khi item equipped, he thong tao runtime modifier tu ca fixed affixes va random affixes voi:
 
 - `Source = ItemInstance`.
-- `StackKey` on dinh theo item va modifier.
+- `StackKey` on dinh theo instance, affixId va source slot.
 - `SourceType = Bonus` hoac type duoc cau hinh.
 - `Order` theo pipeline resolve.
 - `DurationSeconds <= 0` neu la modifier permanent khi equip.
+- Modifier random da roll khong duoc doc lai random pool de tinh lai value.
 
 Khi unequip, goi remove theo `Source = ItemInstance`. Khong luu truc tiep final ATK/DEF vao item hay `CharacterStatsSO`.
+
+### Craft va loot item
+
+Hai flow phai dung chung mot contract:
+
+```text
+Craft request / Loot request
+    -> Validate recipe or loot rule
+    -> Determine item definition and rarity budget
+    -> Roll fixed affixes
+    -> Roll random affix count and affixes
+    -> Snapshot affix values, tier and roll metadata
+    -> Create ItemInstance
+    -> Validate inventory capacity
+    -> Add item or retain world drop on failure
+```
+
+Craft recipe co the override mot phan roll rule, vi du dam bao `FireDamage` hoac tang tier toi da. Override chi ap dung trong lan craft do va ket qua van phai luu vao `ItemInstance`.
+
+Khong cho phep craft/loot tao item bang cach sua `ItemDefinition`. Item definition chi la template; item instance moi la ket qua cu the cua craft hoac loot.
 
 ### Level va XP
 
@@ -465,6 +672,56 @@ Item, pet, constellation, passive, achievement va temporary buff deu la `Modifie
 2. `GameplayModifier`: thay doi hanh vi nhu projectile count, chain count, target limit, loot rate hoac auto-combat rule.
 
 `AttributeSystem` la authority duy nhat cho final character attributes. Gameplay modifier khong duoc ep thanh `AttributeId` chi de dung chung pipeline.
+
+### ROTMG-style attributes
+
+MVP quay lai mot he attribute don gian, doc lap va phu hop mobile:
+
+```text
+HP, MP, ATK, DEF, SPD, DEX, VIT, WIS
+```
+
+`AttributeSystem` doc final value truc tiep tu cac attribute nay. `DerivedStatSystem` chi phu trach cac gia tri phu can thiet cho realtime combat:
+
+```text
+FireRate  <- DEX
+MoveSpeed <- SPD
+HPRegen   <- VIT
+MPRegen   <- WIS
+```
+
+Item affix dung chung mot mapping typed, khong parse display text:
+
+```text
+HP affix  -> HP
+MP affix  -> MP
+ATK affix -> ATK
+DEF affix -> DEF
+SPD affix -> SPD
+DEX affix -> DEX
+VIT affix -> VIT
+WIS affix -> WIS
+```
+
+Affix prefix MVP:
+
+```text
+add HP, add MP, add DEF, add ATK
+```
+
+Affix suffix MVP:
+
+```text
+add WIS, add VIT, add DEX, add SPD
+```
+
+MVP khong roll elemental damage, crit multiplier, movement speed percent hay attack speed. Neu can them lai sau nay, them affix asset moi ma khong doi attribute core.
+
+### Damage model mobile MVP
+
+Elemental damage nen duoc giu vi no tao identity cho weapon va build ma khong can them he thong phuc tap. `FireDamage`, `ColdDamage` va `LightDamage` la gameplay modifiers duoc snapshot trong `ItemInstance`.
+
+Damage penetration tam thoi khong them vao MVP. Basic damage dung `ATK` va mitigation dung `DEF`; sau nay co the them `ArmorPenetration` hoac `ElementalResistance` nhu gameplay modifier khi combat da on dinh.
 
 ### CharacterModifierRuntime
 
@@ -628,12 +885,13 @@ UI character sheet phai cho phep xem:
 ATK 42
     Base: 20
     Level: +2
-    Weapon: +10
+    Weapon fixed damage: +10
+    Weapon random FireDamage: +4%
     Pet: +5
     Constellation: +5
 ```
 
-Moi dong can co source, value, operation va ly do dang active. Day la cong cu bat buoc de debug build va tranh tinh trang stat tang ma khong biet vi sao.
+Moi dong can co source, affixId neu co, value, operation va ly do dang active. UI phai phan biet fixed affix va random affix, dong thoi hien thi tier/roll value de debug build va tranh tinh trang stat tang ma khong biet vi sao.
 ## 11. World runtime va state machine
 
 ### Game states
@@ -675,6 +933,7 @@ Save file nen luu state, khong luu runtime object:
 - Character level, XP, currency.
 - Map hien tai va checkpoint.
 - Inventory item instances.
+- Fixed affix snapshot, random affixes, tier, roll value va rollSeed cua tung item instance.
 - Equipped item/pet.
 - Constellation nodes.
 - Quest state va story flags.
@@ -688,6 +947,7 @@ Load progression
     -> Create AttributeSystem
     -> Apply level/progression
     -> Apply equipment
+    -> Restore item affix snapshots, khong roll lai
     -> Apply pet
     -> Apply constellation/passive
     -> Build gameplay modifier context
@@ -745,6 +1005,7 @@ Player phai nhin thay ly do mot action khong the thuc hien: thieu mana, ngoai ta
 ### Phase 5: Inventory progression
 
 - Item instances.
+- Fixed affixes va random affix roll cho craft/loot.
 - Equipment slots.
 - Modifier rebuild.
 - Pet va constellation foundation.
@@ -770,3 +1031,6 @@ Player phai nhin thay ly do mot action khong the thuc hien: thieu mana, ngoai ta
 10. Definition, instance va runtime state phai tach nhau.
 11. Quest progress dung event, khong polling scene moi frame.
 12. Moi source modifier phai co lifecycle, source va stacking policy ro rang.
+13. Random affix dung prefix/suffix slot va unique theo `affixFamilyId`, khong unique theo `affixId` don thuan.
+14. MVP item co 1-4 random affix, gom 0-2 prefix va 0-2 suffix; rarity duoc suy ra tu tong so affix.
+15. Magic item co dung 1 prefix va 1 suffix; day la invariant cua rarity, khong phai quy uoc UI.

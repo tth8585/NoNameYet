@@ -9,6 +9,10 @@ namespace TTH.Combat.Derived
         public float FR_Base = 1.5f;
         public float FR_PerDex = 0.05f;
 
+        [Header("Crit Chance (%)")]
+        [Min(0f)] public float CritChance_Base;
+        [Min(0f)] public float CritChance_PerDex = 0.1f;
+
         [Header("MoveSpeed (units/sec)")]
         public float MS_Base = 2.0f;
         public float MS_PerSpd = 0.06f;

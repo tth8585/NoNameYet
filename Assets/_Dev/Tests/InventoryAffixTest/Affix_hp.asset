@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3a6b9b0b816ee8846b5e47a226574ddb, type: 3}
+  m_Name: Affix_hp
+  m_EditorClassIdentifier: Assembly-CSharp::TTH.Game.Inventory.AffixDefinitionSO
+  affixId: hp
+  affixFamilyId: hp
+  displayName: HP
+  slotType: 0
+  isPercent: 0
+  effectType: 0
+  attribute: 0
+  operation: 0
+  gameplayModifier: 0
+  tiers:
+  - tierId: T1
+    value: 10
+    weight: 50
+  - tierId: T2
+    value: 20
+    weight: 40
+  - tierId: T3
+    value: 30
+    weight: 10

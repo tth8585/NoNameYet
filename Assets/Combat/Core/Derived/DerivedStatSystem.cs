@@ -18,6 +18,7 @@ namespace TTH.Combat.Derived
         private int _cachedStatusVer = -1;
 
         private float _fireRate;
+        private float _critChance;
         private float _moveSpeed;
         private float _hpRegen;
         private float _mpRegen;
@@ -35,6 +36,7 @@ namespace TTH.Combat.Derived
 
             return id switch
             {
+                DerivedStatId.CritChance => _critChance,
                 DerivedStatId.FireRate => _fireRate,
                 DerivedStatId.MoveSpeed => _moveSpeed,
                 DerivedStatId.HPRegen => _hpRegen,
@@ -61,6 +63,7 @@ namespace TTH.Combat.Derived
             float wis = _attr.Get(AttributeId.WIS);
 
             float fireRateBase = _cfg.FR_Base + dex * _cfg.FR_PerDex;
+            _critChance = _cfg.CritChance_Base + dex * _cfg.CritChance_PerDex;
             float moveSpeedBase = _cfg.MS_Base + spd * _cfg.MS_PerSpd;
 
             float hpRegenBase = vit * _cfg.HPRegen_PerVit;
@@ -103,5 +106,6 @@ namespace TTH.Combat.Derived
             _hpRegen = hpRegenBase;
             _mpRegen = mpRegenBase;
         }
+
     }
 }
