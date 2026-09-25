@@ -12,6 +12,7 @@ namespace TTH.Game.Inventory
         private readonly Dictionary<InventoryContainer, int> capacities = new();
 
         public event Action<ItemInstance> ItemAdded;
+        public event Action<ItemInstance> ItemChanged;
         public event Action<ItemInstance> ItemRemoved;
         public event Action<ItemInstance, string> ItemEquipped;
         public event Action<ItemInstance, string> ItemUnequipped;
@@ -49,6 +50,46 @@ namespace TTH.Game.Inventory
         public IReadOnlyList<ItemInstance> GetEquipped(string slotId)
         {
             return equipped.TryGetValue(slotId, out var result) ? result : Array.Empty<ItemInstance>();
+        }
+
+        public IEnumerable<string> GetEquipmentSlotIds() => slotDefinitions.Keys;
+
+        public void Clear()
+        {
+            foreach (var list in items.Values)
+                list.Clear();
+            equipped.Clear();
+        }
+
+        internal InventoryResult Restore(ItemInstance instance, InventoryContainer container)
+        {
+            if (instance == null || instance.Definition == null || instance.Quantity < 1)
+                return InventoryResult.Fail(InventoryFailure.InvalidItem, "Saved item is invalid.");
+            if (!items.ContainsKey(container) || container == InventoryContainer.Equipment)
+                return InventoryResult.Fail(InventoryFailure.InvalidContainer, "Saved item container is invalid.");
+            if (items[container].Count >= capacities[container])
+                return InventoryResult.Fail(InventoryFailure.InventoryFull, "Saved inventory exceeds capacity.");
+
+            items[container].Add(instance);
+            return InventoryResult.Ok();
+        }
+
+        internal InventoryResult RestoreEquipped(ItemInstance instance, string slotId)
+        {
+            if (instance == null || instance.Definition == null || string.IsNullOrEmpty(slotId))
+                return InventoryResult.Fail(InventoryFailure.InvalidItem, "Saved equipment is invalid.");
+            if (!slotDefinitions.TryGetValue(slotId, out var slot))
+                return InventoryResult.Fail(InventoryFailure.InvalidSlot, "Saved equipment slot is not configured.");
+            if (!slot.Accepts(instance.Definition))
+                return InventoryResult.Fail(InventoryFailure.SlotTagMismatch, "Saved equipment does not match its slot.");
+            if (!equipped.TryGetValue(slotId, out var slotItems))
+                equipped[slotId] = slotItems = new List<ItemInstance>();
+            if (slotItems.Count >= slot.maxCount)
+                return InventoryResult.Fail(InventoryFailure.AlreadyEquipped, "Saved equipment slot is full.");
+
+            slotItems.Add(instance);
+            instance.SetEquipped(true);
+            return InventoryResult.Ok();
         }
 
         public InventoryResult TryAdd(ItemInstance instance, InventoryContainer container = InventoryContainer.Bag)
@@ -98,6 +139,10 @@ namespace TTH.Game.Inventory
             {
                 items[container].Remove(instance);
                 ItemRemoved?.Invoke(instance);
+            }
+            else
+            {
+                ItemChanged?.Invoke(instance);
             }
             return InventoryResult.Ok();
         }
@@ -161,6 +206,11 @@ namespace TTH.Game.Inventory
         public int GetCapacity(InventoryContainer container)
         {
             return capacities.TryGetValue(container, out var capacity) ? capacity : 0;
+        }
+
+        public int GetUsedCapacity(InventoryContainer container)
+        {
+            return items.TryGetValue(container, out var list) ? list.Count : 0;
         }
 
         private bool CanAdd(ItemDefinitionSO definition, int quantity, InventoryContainer container,

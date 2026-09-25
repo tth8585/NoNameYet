@@ -21,6 +21,13 @@ namespace TTH.Game.Inventory
         Legendary
     }
 
+    public enum ConsumableResource
+    {
+        None,
+        HP,
+        MP
+    }
+
     [CreateAssetMenu(menuName = "TTH/Game/Inventory/Item Definition", fileName = "Item_")]
     public sealed class ItemDefinitionSO : ScriptableObject
     {
@@ -36,6 +43,10 @@ namespace TTH.Game.Inventory
         [Min(1)] public int maxStack = 1;
         public string[] tags;
         public int sellValue;
+
+        [Header("Consumable")]
+        public ConsumableResource consumeResource;
+        [Min(0f)] public float consumeAmount;
 
         [Header("Equipment")]
         public string equipmentSlotId;

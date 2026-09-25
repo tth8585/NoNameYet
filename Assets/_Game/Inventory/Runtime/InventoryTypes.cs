@@ -95,6 +95,47 @@ namespace TTH.Game.Inventory
                 this.randomAffixes = new List<RolledAffix>(randomAffixes);
         }
 
+        internal ItemInstance(string instanceId, ItemDefinitionSO definition, int quantity, int level,
+            string rolledStateKey, float durability, bool isEquipped, bool isBound, string acquiredAt,
+            int rollSeed, IEnumerable<RolledAffix> randomAffixes, ItemRarity rolledRarity)
+        {
+            this.instanceId = string.IsNullOrEmpty(instanceId) ? Guid.NewGuid().ToString("N") : instanceId;
+            this.definition = definition;
+            this.quantity = quantity;
+            this.level = level;
+            this.rolledStateKey = rolledStateKey ?? string.Empty;
+            this.durability = durability;
+            this.isEquipped = isEquipped;
+            this.isBound = isBound;
+            this.acquiredAt = acquiredAt ?? string.Empty;
+            this.rollSeed = rollSeed;
+            this.rolledRarity = rolledRarity;
+            this.randomAffixes = randomAffixes == null
+                ? new List<RolledAffix>()
+                : new List<RolledAffix>(randomAffixes);
+        }
+
+        internal ItemInstanceSaveData CreateSaveData(InventoryContainer container, string slotId = "")
+        {
+            return new ItemInstanceSaveData
+            {
+                instanceId = instanceId,
+                itemId = definition == null ? string.Empty : definition.itemId,
+                quantity = quantity,
+                level = level,
+                rolledStateKey = rolledStateKey,
+                durability = durability,
+                isEquipped = isEquipped,
+                isBound = isBound,
+                acquiredAt = acquiredAt,
+                rollSeed = rollSeed,
+                randomAffixes = new List<RolledAffix>(randomAffixes),
+                rolledRarity = rolledRarity,
+                container = container,
+                slotId = slotId
+            };
+        }
+
         public bool CanStackWith(ItemInstance other)
         {
             return other != null && definition == other.definition &&
@@ -118,6 +159,25 @@ namespace TTH.Game.Inventory
 
         internal void SetEquipped(bool value) => isEquipped = value;
         internal void SetDurability(float value) => durability = value;
+    }
+
+    [Serializable]
+    public sealed class ItemInstanceSaveData
+    {
+        public string instanceId;
+        public string itemId;
+        public int quantity;
+        public int level;
+        public string rolledStateKey;
+        public float durability;
+        public bool isEquipped;
+        public bool isBound;
+        public string acquiredAt;
+        public int rollSeed;
+        public List<RolledAffix> randomAffixes = new();
+        public ItemRarity rolledRarity;
+        public InventoryContainer container;
+        public string slotId;
     }
 
     [Serializable]

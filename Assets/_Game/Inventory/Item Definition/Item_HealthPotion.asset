@@ -23,6 +23,8 @@ MonoBehaviour:
   - Potion
   - Consumable
   sellValue: 5
+  consumeResource: 1
+  consumeAmount: 25
   equipmentSlotId: 
   equippedModifiers: []
   randomAffixPool: []

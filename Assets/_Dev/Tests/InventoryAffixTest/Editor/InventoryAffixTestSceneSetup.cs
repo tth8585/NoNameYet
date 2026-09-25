@@ -105,7 +105,7 @@ namespace TTH.Game.Inventory.Tests.Editor
             sword.itemType = ItemType.Equipment;
             sword.rarity = ItemRarity.Common;
             sword.maxStack = 1;
-            sword.tags = new[] { "Weapon", "Melee" };
+            sword.tags = new[] { "Weapon", "Sword", "Melee" };
             sword.equipmentSlotId = "Weapon";
             sword.randomAffixRules = new RandomAffixRules
             {

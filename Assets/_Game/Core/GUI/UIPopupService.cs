@@ -6,6 +6,7 @@ public sealed class UIPopupService
     private readonly Dictionary<UIID, UIPopup> _popups = new();
     private readonly List<UIPopup> _stack = new();
     private readonly GameObject _inputBlocker;
+    private Transform _popupRoot;
 
     public UIPopup Top => _stack.Count == 0 ? null : _stack[_stack.Count - 1];
     public bool HasOpenPopup => _stack.Count > 0;
@@ -13,11 +14,13 @@ public sealed class UIPopupService
     public UIPopupService(GameObject inputBlocker)
     {
         _inputBlocker = inputBlocker;
+        RefreshBlocker();
     }
 
     public void Register(Transform root)
     {
         _popups.Clear();
+        _popupRoot = root;
         if (root == null)
             return;
 
@@ -115,6 +118,8 @@ public sealed class UIPopupService
             return;
 
         _inputBlocker.transform.SetAsLastSibling();
+        if (_popupRoot != null)
+            _popupRoot.SetAsLastSibling();
         Top.transform.SetAsLastSibling();
     }
 }
