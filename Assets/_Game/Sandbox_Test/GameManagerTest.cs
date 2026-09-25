@@ -7,7 +7,7 @@ public class GameManagerTest : MonoBehaviour
     void Start()
     {
 
-        //UIManager.Instance.ShowView(UIID.HomeView);
+        UIManager.Instance.ShowView(UIID.HomeView);
     }
 
     // Update is called once per frame
@@ -15,7 +15,7 @@ public class GameManagerTest : MonoBehaviour
     {
         if (Keyboard.current != null && Keyboard.current.iKey.wasPressedThisFrame)
         {
-            UIManager.Instance.ShowView(UIID.CharacterPanelView);
+            UIManager.Instance.ShowView(UIID.InventoryView);
         }
         else if (Keyboard.current != null && Keyboard.current.bKey.wasPressedThisFrame)
         {
@@ -23,8 +23,8 @@ public class GameManagerTest : MonoBehaviour
         }
         else if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
         {
-            UIManager.Instance.CloseView(UIID.CharacterPanelView);
             UIManager.Instance.CloseView(UIID.InventoryView);
+            UIManager.Instance.ShowView(UIID.HomeView);
         }
     }
 }

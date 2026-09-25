@@ -12,7 +12,6 @@ public enum UIID
     WinPopup,
     LosePopup,
 
-    CharacterPanelView,
     InventoryView
 }
 
