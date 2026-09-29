@@ -2,7 +2,7 @@ namespace TTH.Combat.Derived
 {
     public enum DerivedStatId
     {
-        CritChance,
+        DamageMultiplier,
         FireRate,
         MoveSpeed,
         HPRegen,

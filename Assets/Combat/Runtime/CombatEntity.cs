@@ -15,14 +15,17 @@ namespace TTH.Combat.Runtime
         public StatusSystem Statuses { get; }
         public DerivedStatSystem Derived { get; }
         public ResourcePool Resources { get; }
+        public VitalCombatState VitalCombat { get; }
 
-        public CombatEntity(int id, AttributeSystem attributes, StatusSystem statuses, DerivedStatSystem derived, ResourcePool resources)
+        public CombatEntity(int id, AttributeSystem attributes, StatusSystem statuses, DerivedStatSystem derived,
+            ResourcePool resources, float armorProficiencyTimeReduction = 0f)
         {
             Id = id;
             Attributes = attributes;
             Statuses = statuses;
             Derived = derived;
             Resources = resources;
+            VitalCombat = new VitalCombatState(attributes, armorProficiencyTimeReduction);
         }
     }
 }

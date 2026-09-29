@@ -133,7 +133,8 @@ namespace TTH.Game.Inventory
                     savedItem.acquiredAt,
                     savedItem.rollSeed,
                     savedItem.randomAffixes,
-                    savedItem.rolledRarity);
+                    savedItem.rolledRarity,
+                    savedItem.abilitySlotCount);
                 restored.Add(new RestoredItem(item, savedItem.container, savedItem.slotId));
             }
 

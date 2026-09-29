@@ -1,14 +1,16 @@
-using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 using TTH.Combat.Attributes;
+using TTH.Combat.Derived;
 using TTH.Combat.Runtime;
+using TTH.Combat.Simulation;
 using TTH.Combat.Status;
 using TTH.Game.Inventory;
 
 public class PlayerRuntime : MonoBehaviour
 {
     [SerializeField] private CharacterStatsSO characterStats;
+    [SerializeField] private DerivedStatsConfigSO derivedStatsConfig;
     [SerializeField] private ItemDefinitionSO defaultRustySword;
     [SerializeField] private ItemDefinitionDatabaseSO itemDatabase;
     [SerializeField] private string inventorySaveFileName = "inventory.json";
@@ -17,13 +19,37 @@ public class PlayerRuntime : MonoBehaviour
     public CombatEntity Entity => characterEntity;
     public ResourcePool Resources => characterResources;
     public StatusSystem Statuses => characterStatus;
+    public DerivedStatSystem DerivedStats => characterDerivedStats;
+    public VitalCombatState VitalCombat => characterEntity?.VitalCombat;
     public InventoryRuntime Inventory => inventory;
+    public float DamageMultiplier => characterDerivedStats?.Get(DerivedStatId.DamageMultiplier)
+        ?? Mathf.Max(0f, 0.5f + (Attributes?.Get(AttributeId.ATK) ?? 0f) / 50f);
+    public float ActualMoveSpeed => characterDerivedStats?.Get(DerivedStatId.MoveSpeed)
+        ?? 4f + 5.6f * (Attributes?.Get(AttributeId.SPD) ?? 0f) / 75f;
+    public float AttacksPerSecond => characterDerivedStats?.Get(DerivedStatId.FireRate)
+        ?? 1.5f + 6.5f * (Attributes?.Get(AttributeId.DEX) ?? 0f) / 75f;
+    public ItemInstance EquippedWeapon => inventory?.GetEquipped("Weapon") is { Count: > 0 } weapons
+        ? weapons[0]
+        : null;
+    public ItemDefinitionSO BasicAttackWeapon => EquippedWeapon?.Definition is { IsWeapon: true } weapon
+        ? weapon
+        : null;
+    public float BasicAttackRange => BasicAttackWeapon != null && BasicAttackWeapon.IsWeapon
+        ? BasicAttackWeapon.WeaponRange
+        : 1f;
+    public float EquippedWeaponRange => EquippedWeapon?.Definition is { IsWeapon: true } weapon
+        ? weapon.WeaponRange
+        : 0f;
 
     private AttributeSystem characterAttributes;
     private CombatEntity characterEntity;
     private ResourcePool characterResources;
     private StatusSystem characterStatus;
+    private DerivedStatSystem characterDerivedStats;
     private InventoryRuntime inventory;
+    private readonly ItemRollService itemRollService = new();
+    private CombatRuntime combatRuntime;
+    private bool ownsDerivedStatsConfig;
     private EquipmentModifierBinder equipmentBinder;
     private AffixModifierBridge affixBinder;
 
@@ -56,8 +82,28 @@ public class PlayerRuntime : MonoBehaviour
         characterAttributes = new AttributeSystem(characterStatBlock, null);
         characterResources = new ResourcePool(characterStats.hitPoints, characterStats.magicPoints);
         characterStatus = new StatusSystem();
-        characterEntity = new CombatEntity(1, characterAttributes, characterStatus, null, characterResources);
+        if (derivedStatsConfig == null)
+        {
+            derivedStatsConfig = ScriptableObject.CreateInstance<DerivedStatsConfigSO>();
+            ownsDerivedStatsConfig = true;
+        }
+        characterDerivedStats = new DerivedStatSystem(characterAttributes, characterStatus, derivedStatsConfig);
+        characterEntity = new CombatEntity(1, characterAttributes, characterStatus, characterDerivedStats,
+            characterResources, characterStats.armorProficiencyCombatTimeReduction);
+        combatRuntime = new CombatRuntime();
+        combatRuntime.Register(characterEntity);
         InitializeInventory();
+    }
+
+    private void Update()
+    {
+        combatRuntime?.Tick(Time.deltaTime);
+    }
+
+    private void OnDestroy()
+    {
+        if (ownsDerivedStatsConfig && derivedStatsConfig != null)
+            Destroy(derivedStatsConfig);
     }
 
     private void InitializeInventory()
@@ -174,6 +220,15 @@ public class PlayerRuntime : MonoBehaviour
         return result;
     }
 
+    public float RollBasicAttackDamage()
+    {
+        var weapon = BasicAttackWeapon;
+        if (weapon == null || !weapon.IsWeapon)
+            return Mathf.Max(0f, Attributes?.Get(AttributeId.ATK) ?? 0f);
+
+        return Mathf.Floor(weapon.RollWeaponDamage() * DamageMultiplier);
+    }
+
     private void HandleItemEquipped(ItemInstance item, string slotId)
     {
         equipmentBinder.Equip(item);
@@ -218,7 +273,10 @@ public class PlayerRuntime : MonoBehaviour
             return;
         }
 
-        InventoryResult result = inventory.TryAdd(CreateDefaultRustySword());
+        if (!TryRollItem(defaultRustySword, "Rusty Sword", out var rustySword))
+            return;
+
+        InventoryResult result = inventory.TryAdd(rustySword);
         if (!result.Success)
         {
             Debug.LogWarning($"Could not add test Rusty Sword: {result.Message}", this);
@@ -229,6 +287,53 @@ public class PlayerRuntime : MonoBehaviour
         Debug.Log("Added a Rusty Sword to the Bag and saved the inventory.", this);
     }
 
+    [ContextMenu("Debug/Add Short Bow To Bag")]
+    private void AddShortBowToBagForTesting()
+    {
+        AddWeaponToBagForTesting("Item_short_bow", "Short Bow");
+    }
+
+    [ContextMenu("Debug/Add Energy Staff To Bag")]
+    private void AddEnergyStaffToBagForTesting()
+    {
+        AddWeaponToBagForTesting("Item_energy_staff", "Energy Staff");
+    }
+
+    private void AddWeaponToBagForTesting(string itemId, string weaponName)
+    {
+        if (!Application.isPlaying)
+        {
+            Debug.LogWarning("Enter Play Mode before adding a test weapon.", this);
+            return;
+        }
+
+        if (inventory == null || itemDatabase == null)
+        {
+            Debug.LogWarning("Player inventory or item database is not initialized.", this);
+            return;
+        }
+
+        var definition = itemDatabase.Find(itemId);
+        if (definition == null)
+        {
+            Debug.LogWarning($"Could not find {weaponName} in the item database.", this);
+            return;
+        }
+
+        if (!TryRollItem(definition, weaponName, out var item))
+            return;
+
+        var result = inventory.TryAdd(item);
+        if (!result.Success)
+        {
+            Debug.LogWarning($"Could not add {weaponName}: {result.Message}", this);
+            return;
+        }
+
+        SaveInventory();
+        Debug.Log($"Added {weaponName} to the Bag and saved the inventory.", this);
+    }
+
     private void CreateDefaultInventory()
     {
         if (defaultRustySword == null)
@@ -237,36 +342,25 @@ public class PlayerRuntime : MonoBehaviour
             return;
         }
 
-        var result = inventory.TryAdd(CreateDefaultRustySword());
+        if (!TryRollItem(defaultRustySword, "default Rusty Sword", out var rustySword))
+            return;
+
+        var result = inventory.TryAdd(rustySword);
         if (!result.Success)
             Debug.LogError($"Could not add default Rusty Sword: {result.Message}", this);
     }
 
-    private ItemInstance CreateDefaultRustySword()
+    private bool TryRollItem(ItemDefinitionSO definition, string itemName, out ItemInstance item)
     {
-        var dexAffix = new RolledAffix
+        ItemRollResult roll = itemRollService.Roll(definition);
+        if (!roll.Success)
         {
-            affixId = "dex",
-            affixFamilyId = "dex",
-            displayName = "Dexterity",
-            slotType = AffixSlotType.Suffix,
-            tierId = "T2",
-            value = 10f,
-            isPercent = false,
-            effectType = AffixEffectType.Attribute,
-            attribute = AttributeId.DEX,
-            operation = ModifierOp.Add,
-            gameplayModifier = GameplayModifierType.none
-        };
+            item = null;
+            Debug.LogWarning($"Could not roll {itemName}: {roll.Error}", this);
+            return false;
+        }
 
-        var rustySword = new ItemInstance(
-            defaultRustySword,
-            1,
-            "dex_T2",
-            false,
-            new List<RolledAffix> { dexAffix },
-            0,
-            ItemRarity.Common);
-        return rustySword;
+        item = roll.Item;
+        return true;
     }
 }

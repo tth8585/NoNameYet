@@ -28,6 +28,14 @@ namespace TTH.Game.Inventory
         MP
     }
 
+    public enum WeaponType
+    {
+        None,
+        Sword,
+        Bow,
+        Staff
+    }
+
     [CreateAssetMenu(menuName = "TTH/Game/Inventory/Item Definition", fileName = "Item_")]
     public sealed class ItemDefinitionSO : ScriptableObject
     {
@@ -52,11 +60,32 @@ namespace TTH.Game.Inventory
         public string equipmentSlotId;
         public AttributeModifier[] equippedModifiers;
 
+        [Header("Weapon")]
+        public WeaponType weaponType;
+        [Min(0)] public int damageMin = 45;
+        [Min(0)] public int damageMax = 90;
+        [Min(0f)] public float attackRange = 3.5f;
+
+        public bool IsWeapon => weaponType != WeaponType.None;
+        public float WeaponRange => attackRange;
+        public int WeaponDamageMin => damageMin;
+        public int WeaponDamageMax => damageMax;
+
         [Header("Random Affixes")]
         public RandomAffixPoolSO randomAffixPool;
-        public RandomAffixRules randomAffixRules;
+        public RandomAffixRulesSO randomAffixRules;
+
+        [Header("Ability Loadout Slots")]
+        public AbilitySlotRulesSO abilitySlotRules;
 
         public bool IsEquipment => itemType == ItemType.Equipment;
+
+        public float RollWeaponDamage()
+        {
+            return IsWeapon
+                ? UnityEngine.Random.Range(WeaponDamageMin, WeaponDamageMax)
+                : 0f;
+        }
 
         public bool HasTag(string tag)
         {

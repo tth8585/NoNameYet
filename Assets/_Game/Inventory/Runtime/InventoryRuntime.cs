@@ -116,7 +116,9 @@ namespace TTH.Game.Inventory
                 int amount = Math.Min(remaining, instance.Definition.maxStack);
                 var stack = remaining == instance.Quantity && amount == instance.Quantity
                     ? instance
-                    : new ItemInstance(instance.Definition, amount, instance.RolledStateKey, instance.IsBound);
+                    : new ItemInstance(instance.Definition, amount, instance.RolledStateKey, instance.IsBound,
+                        instance.RandomAffixes, instance.RollSeed, instance.RolledRarity,
+                        instance.AbilityLoadout);
                 items[container].Add(stack);
                 remaining -= amount;
                 ItemAdded?.Invoke(stack);
@@ -160,10 +162,31 @@ namespace TTH.Game.Inventory
                 return InventoryResult.Fail(InventoryFailure.SlotTagMismatch, "Item tags do not match this slot.");
             if (!equipped.TryGetValue(slotId, out var slotItems))
                 equipped[slotId] = slotItems = new List<ItemInstance>();
-            if (slotItems.Count >= slot.maxCount)
-                return InventoryResult.Fail(InventoryFailure.AlreadyEquipped, "Equipment slot is full.");
 
-            items[InventoryContainer.Bag].Remove(instance);
+            var bag = items[InventoryContainer.Bag];
+            int bagIndex = bag.IndexOf(instance);
+            if (bagIndex < 0)
+                return InventoryResult.Fail(InventoryFailure.ItemNotFound, "Item instance was not found in the bag.");
+
+            if (slotItems.Count >= slot.maxCount)
+            {
+                if (slot.maxCount != 1 || slotItems.Count != 1)
+                    return InventoryResult.Fail(InventoryFailure.AlreadyEquipped, "Equipment slot is full.");
+
+                var equippedItem = slotItems[0];
+                bag.RemoveAt(bagIndex);
+                var unequipResult = TryUnequip(equippedItem.InstanceId, slotId);
+                if (!unequipResult.Success)
+                {
+                    bag.Insert(bagIndex, instance);
+                    return unequipResult;
+                }
+            }
+            else
+            {
+                bag.RemoveAt(bagIndex);
+            }
+
             slotItems.Add(instance);
             instance.SetEquipped(true);
             ItemEquipped?.Invoke(instance, slotId);

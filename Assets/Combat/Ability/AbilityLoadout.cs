@@ -6,8 +6,11 @@ namespace TTH.Combat.Ability
     [Serializable]
     public sealed class AbilityLoadout
     {
+        [Min(1)] public int slotCount = 1;
         public AbilityDefinition activeAbility;
         public SupportAbilityDefinitionSO[] supportLinks = Array.Empty<SupportAbilityDefinitionSO>();
+
+        public int SupportSlotCapacity => Mathf.Max(0, slotCount - 1);
 
         public AbilityLoadout()
         {

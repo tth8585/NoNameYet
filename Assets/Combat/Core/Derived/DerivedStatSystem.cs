@@ -18,7 +18,7 @@ namespace TTH.Combat.Derived
         private int _cachedStatusVer = -1;
 
         private float _fireRate;
-        private float _critChance;
+        private float _damageMultiplier;
         private float _moveSpeed;
         private float _hpRegen;
         private float _mpRegen;
@@ -36,7 +36,7 @@ namespace TTH.Combat.Derived
 
             return id switch
             {
-                DerivedStatId.CritChance => _critChance,
+                DerivedStatId.DamageMultiplier => _damageMultiplier,
                 DerivedStatId.FireRate => _fireRate,
                 DerivedStatId.MoveSpeed => _moveSpeed,
                 DerivedStatId.HPRegen => _hpRegen,
@@ -61,48 +61,22 @@ namespace TTH.Combat.Derived
             float spd = _attr.Get(AttributeId.SPD);
             float vit = _attr.Get(AttributeId.VIT);
             float wis = _attr.Get(AttributeId.WIS);
+            float atk = _attr.Get(AttributeId.ATK);
 
+            _damageMultiplier = Mathf.Max(0f, _cfg.DamageMultiplier_Base + atk * _cfg.DamageMultiplier_PerAtk);
             float fireRateBase = _cfg.FR_Base + dex * _cfg.FR_PerDex;
-            _critChance = _cfg.CritChance_Base + dex * _cfg.CritChance_PerDex;
             float moveSpeedBase = _cfg.MS_Base + spd * _cfg.MS_PerSpd;
 
-            float hpRegenBase = vit * _cfg.HPRegen_PerVit;
-            float mpRegenBase = wis * _cfg.MPRegen_PerWis;
+            float hpRegenBase = _cfg.HPRegen_Base + vit * _cfg.HPRegen_PerVit;
+            float mpRegenBase = _cfg.MPRegen_Base + wis * _cfg.MPRegen_PerWis;
 
             // --- Apply statuses (post-derived) ---
-            // FireRate: Berserk, Dazed
-            float fireMul = 1f;
-            if (_status.Has(StatusId.Berserk)) fireMul *= _cfg.BerserkMul;
-            if (_status.Has(StatusId.Dazed)) fireMul *= _cfg.DazedMul;
+            _fireRate = fireRateBase * (_status.Has(StatusId.Berserk) ? _cfg.BerserkMul : 1f);
+            _moveSpeed = moveSpeedBase * (_status.Has(StatusId.Speedy) ? _cfg.SpeedyMul : 1f);
 
-            _fireRate = fireRateBase * fireMul;
-
-            // MoveSpeed: Paralyze override, else Speedy/Slow multipliers
-            if (_status.Has(StatusId.Paralyze))
-            {
-                _moveSpeed = 0f;
-            }
-            else
-            {
-                float moveMul = 1f;
-                if (_status.Has(StatusId.Speedy)) moveMul *= _cfg.SpeedyMul;
-                if (_status.Has(StatusId.Slow)) moveMul *= _cfg.SlowMul;
-
-                _moveSpeed = moveSpeedBase * moveMul;
-            }
-
-            // Regen: Healing status boosts regen
             if (_status.Has(StatusId.Healing))
-            {
-                hpRegenBase = hpRegenBase * Mathf.Max(0f, _cfg.Healing_HPRegenMul) + _cfg.Healing_HPRegenAdd;
-            }
+                hpRegenBase += _cfg.Healing_HPRegenAdd;
 
-            if(_status.Has(StatusId.Energized))
-            {
-                mpRegenBase = mpRegenBase * Mathf.Max(0f, _cfg.Energized_MPRegenMul) + _cfg.Energized_MPRegenAdd;
-            }
-
-            // Regen (no statuses for now)
             _hpRegen = hpRegenBase;
             _mpRegen = mpRegenBase;
         }

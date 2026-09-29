@@ -27,20 +27,11 @@ MonoBehaviour:
   consumeResource: 0
   consumeAmount: 0
   equipmentSlotId: Weapon
-  equippedModifiers:
-  - Attribute: 2
-    Op: 0
-    Value: 5
-    SourceType: 1
-    Order: 0
-    Stacking: 0
-    StackKey: 
-    DurationSeconds: 0
-  randomAffixPool: {fileID: 0}
-  randomAffixRules:
-    minRandomAffixes: 2
-    maxRandomAffixes: 4
-    minPrefixAffixes: 2
-    maxPrefixAffixes: 2
-    minSuffixAffixes: 0
-    maxSuffixAffixes: 2
+  equippedModifiers: []
+  weaponType: 1
+  damageMin: 45
+  damageMax: 90
+  attackRange: 3.5
+  randomAffixPool: {fileID: 11400000, guid: e50ccb362673a804db6be0fded64a770, type: 2}
+  randomAffixRules: {fileID: 11400000, guid: ca78dcb742874c17aac26d9903b76ef9, type: 2}
+  abilitySlotRules: {fileID: 11400000, guid: 9052bb3adef54363a5dfbb12703916c6, type: 2}

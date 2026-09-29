@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using TTH.Combat.Ability;
 
 namespace TTH.Game.Inventory
 {
@@ -61,6 +62,7 @@ namespace TTH.Game.Inventory
         [SerializeField] private int rollSeed;
         [SerializeField] private List<RolledAffix> randomAffixes = new();
         [SerializeField] private ItemRarity rolledRarity;
+        [SerializeField] private AbilityLoadout abilityLoadout = new();
 
         public string InstanceId => instanceId;
         public ItemDefinitionSO Definition => definition;
@@ -74,6 +76,7 @@ namespace TTH.Game.Inventory
         public int RollSeed => rollSeed;
         public IReadOnlyList<RolledAffix> RandomAffixes => randomAffixes;
         public ItemRarity RolledRarity => rolledRarity;
+        public AbilityLoadout AbilityLoadout => abilityLoadout;
 
         public ItemInstance(ItemDefinitionSO definition, int quantity = 1, string rolledStateKey = "", bool isBound = false)
             : this(definition, quantity, rolledStateKey, isBound, null, 0)
@@ -82,6 +85,13 @@ namespace TTH.Game.Inventory
 
         public ItemInstance(ItemDefinitionSO definition, int quantity, string rolledStateKey, bool isBound,
             IEnumerable<RolledAffix> randomAffixes, int rollSeed, ItemRarity rolledRarity = ItemRarity.Common)
+            : this(definition, quantity, rolledStateKey, isBound, randomAffixes, rollSeed, rolledRarity, null)
+        {
+        }
+
+        public ItemInstance(ItemDefinitionSO definition, int quantity, string rolledStateKey, bool isBound,
+            IEnumerable<RolledAffix> randomAffixes, int rollSeed, ItemRarity rolledRarity,
+            AbilityLoadout abilityLoadout)
         {
             instanceId = Guid.NewGuid().ToString("N");
             this.definition = definition;
@@ -93,11 +103,18 @@ namespace TTH.Game.Inventory
             this.rolledRarity = rolledRarity;
             if (randomAffixes != null)
                 this.randomAffixes = new List<RolledAffix>(randomAffixes);
+            this.abilityLoadout = abilityLoadout == null
+                ? new AbilityLoadout()
+                : new AbilityLoadout(abilityLoadout.activeAbility, abilityLoadout.supportLinks)
+                {
+                    slotCount = abilityLoadout.slotCount
+                };
         }
 
         internal ItemInstance(string instanceId, ItemDefinitionSO definition, int quantity, int level,
             string rolledStateKey, float durability, bool isEquipped, bool isBound, string acquiredAt,
-            int rollSeed, IEnumerable<RolledAffix> randomAffixes, ItemRarity rolledRarity)
+            int rollSeed, IEnumerable<RolledAffix> randomAffixes, ItemRarity rolledRarity,
+            int abilitySlotCount)
         {
             this.instanceId = string.IsNullOrEmpty(instanceId) ? Guid.NewGuid().ToString("N") : instanceId;
             this.definition = definition;
@@ -113,6 +130,7 @@ namespace TTH.Game.Inventory
             this.randomAffixes = randomAffixes == null
                 ? new List<RolledAffix>()
                 : new List<RolledAffix>(randomAffixes);
+            abilityLoadout = new AbilityLoadout { slotCount = Mathf.Max(1, abilitySlotCount) };
         }
 
         internal ItemInstanceSaveData CreateSaveData(InventoryContainer container, string slotId = "")
@@ -130,6 +148,7 @@ namespace TTH.Game.Inventory
                 acquiredAt = acquiredAt,
                 rollSeed = rollSeed,
                 randomAffixes = new List<RolledAffix>(randomAffixes),
+                abilitySlotCount = abilityLoadout == null ? 1 : abilityLoadout.slotCount,
                 rolledRarity = rolledRarity,
                 container = container,
                 slotId = slotId
@@ -175,6 +194,7 @@ namespace TTH.Game.Inventory
         public string acquiredAt;
         public int rollSeed;
         public List<RolledAffix> randomAffixes = new();
+        public int abilitySlotCount = 1;
         public ItemRarity rolledRarity;
         public InventoryContainer container;
         public string slotId;

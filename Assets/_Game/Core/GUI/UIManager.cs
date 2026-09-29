@@ -12,7 +12,7 @@ public enum UIID
     WinPopup,
     LosePopup,
 
-    InventoryView
+    InventoryView,
 }
 
 public class UIManager : ManualSingletonMono<UIManager>

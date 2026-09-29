@@ -12,5 +12,6 @@ public sealed class CharacterStatsSO : ScriptableObject
     [Min(0f)] public float dexterity = 17f;
     [Min(0f)] public float vitality = 17f;
     [Min(0f)] public float wisdom = 17f;
+    [Range(0f, 1f)] public float armorProficiencyCombatTimeReduction;
 
 }

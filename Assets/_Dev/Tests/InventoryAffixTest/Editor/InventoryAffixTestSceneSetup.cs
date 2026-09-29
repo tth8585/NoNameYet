@@ -10,8 +10,10 @@ namespace TTH.Game.Inventory.Tests.Editor
     public static class InventoryAffixTestSceneSetup
     {
         private const string FolderPath = "Assets/_Dev/Tests/InventoryAffixTest";
+        private const string AffixFolderPath = "Assets/_Game/Inventory/Definitions/Affixes";
         private const string AssetPath = FolderPath + "/Item_rusty_sword.asset";
-        private const string PoolPath = FolderPath + "/Weapon_AffixPool.asset";
+        private const string PoolPath = AffixFolderPath + "/Weapon_AffixPool.asset";
+        private const string RulesPath = FolderPath + "/RandomAffixRules_Test.asset";
         private const string ScenePath = FolderPath + "/InventoryAffixTest.unity";
 
         [MenuItem("TTH/Tests/Create Inventory Affix Test Scene")]
@@ -19,7 +21,8 @@ namespace TTH.Game.Inventory.Tests.Editor
         {
             EnsureFolder();
             RandomAffixPoolSO pool = CreateWeaponAffixPool();
-            ItemDefinitionSO sword = CreateRustySwordAsset(pool);
+            RandomAffixRulesSO rules = CreateTestAffixRules();
+            ItemDefinitionSO sword = CreateRustySwordAsset(pool, rules);
             var scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
             var testObject = new GameObject("InventoryAffixTest");
             var runner = testObject.AddComponent<InventoryAffixTestRunner>();
@@ -37,6 +40,9 @@ namespace TTH.Game.Inventory.Tests.Editor
                     AssetDatabase.CreateFolder("Assets/_Dev", "Tests");
                 AssetDatabase.CreateFolder("Assets/_Dev/Tests", "InventoryAffixTest");
             }
+
+            if (!AssetDatabase.IsValidFolder(AffixFolderPath))
+                AssetDatabase.CreateFolder("Assets/_Game/Inventory/Definitions", "Affixes");
         }
 
         private static RandomAffixPoolSO CreateWeaponAffixPool()
@@ -69,7 +75,7 @@ namespace TTH.Game.Inventory.Tests.Editor
 
         private static AffixDefinitionSO CreateAffixAsset(string id, RandomAffixDefinition definition)
         {
-            string path = $"{FolderPath}/Affix_{id}.asset";
+            string path = $"{AffixFolderPath}/Affix_{id}.asset";
             var asset = AssetDatabase.LoadAssetAtPath<AffixDefinitionSO>(path);
             if (asset == null)
             {
@@ -90,7 +96,26 @@ namespace TTH.Game.Inventory.Tests.Editor
             return asset;
         }
 
-        private static ItemDefinitionSO CreateRustySwordAsset(RandomAffixPoolSO pool)
+        private static RandomAffixRulesSO CreateTestAffixRules()
+        {
+            var rules = AssetDatabase.LoadAssetAtPath<RandomAffixRulesSO>(RulesPath);
+            if (rules == null)
+            {
+                rules = ScriptableObject.CreateInstance<RandomAffixRulesSO>();
+                AssetDatabase.CreateAsset(rules, RulesPath);
+            }
+
+            rules.minRandomAffixes = 1;
+            rules.maxRandomAffixes = 4;
+            rules.minPrefixAffixes = 0;
+            rules.maxPrefixAffixes = 2;
+            rules.minSuffixAffixes = 0;
+            rules.maxSuffixAffixes = 2;
+            EditorUtility.SetDirty(rules);
+            return rules;
+        }
+
+        private static ItemDefinitionSO CreateRustySwordAsset(RandomAffixPoolSO pool, RandomAffixRulesSO rules)
         {
             var sword = AssetDatabase.LoadAssetAtPath<ItemDefinitionSO>(AssetPath);
             if (sword == null)
@@ -103,19 +128,12 @@ namespace TTH.Game.Inventory.Tests.Editor
             sword.displayName = "Rusty Sword";
             sword.description = "Test weapon with weighted prefix and suffix affixes.";
             sword.itemType = ItemType.Equipment;
+            sword.weaponType = WeaponType.Sword;
             sword.rarity = ItemRarity.Common;
             sword.maxStack = 1;
             sword.tags = new[] { "Weapon", "Sword", "Melee" };
             sword.equipmentSlotId = "Weapon";
-            sword.randomAffixRules = new RandomAffixRules
-            {
-                minRandomAffixes = 1,
-                maxRandomAffixes = 4,
-                minPrefixAffixes = 0,
-                maxPrefixAffixes = 2,
-                minSuffixAffixes = 0,
-                maxSuffixAffixes = 2
-            };
+            sword.randomAffixRules = rules;
             sword.randomAffixPool = pool;
 
             EditorUtility.SetDirty(sword);

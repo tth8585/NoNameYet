@@ -10,26 +10,28 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 348354a3bc2309b40b0a046354100d74, type: 3}
-  m_Name: Item_rusty_sword
+  m_Name: Item_short_bow
   m_EditorClassIdentifier: Assembly-CSharp::TTH.Game.Inventory.ItemDefinitionSO
-  itemId: Item_rusty_sword
-  displayName: Rusty Sword
-  description: Test weapon with weighted prefix and suffix affixes.
-  icon: {fileID: 0}
+  itemId: Item_short_bow
+  displayName: Short Bow
+  description: A light bow for quick ranged attacks.
+  icon: {fileID: 21300000, guid: c3ff625e78b1145eaa2ebed586379354, type: 3}
   itemType: 0
   rarity: 0
   maxStack: 1
   tags:
   - Weapon
-  - Melee
+  - Bow
+  - Ranged
   sellValue: 0
+  consumeResource: 0
+  consumeAmount: 0
   equipmentSlotId: Weapon
   equippedModifiers: []
+  weaponType: 2
+  damageMin: 15
+  damageMax: 20
+  attackRange: 7.04
   randomAffixPool: {fileID: 11400000, guid: e50ccb362673a804db6be0fded64a770, type: 2}
-  randomAffixRules:
-    minRandomAffixes: 1
-    maxRandomAffixes: 4
-    minPrefixAffixes: 0
-    maxPrefixAffixes: 2
-    minSuffixAffixes: 0
-    maxSuffixAffixes: 2
+  randomAffixRules: {fileID: 11400000, guid: ca78dcb742874c17aac26d9903b76ef9, type: 2}
+  abilitySlotRules: {fileID: 11400000, guid: f6ab885bb3d7451f95eaa8a2649c5849, type: 2}

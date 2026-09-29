@@ -98,12 +98,10 @@ namespace TTH.Combat.Runtime
             if (!ctx.hasBaseDamage && ctx.baseDamage <= 0f)
                 ctx.baseDamage = Math.Max(0f, ctx.atk);
 
-            // --- Mitigation (MVP): minus DEF ---
-            ctx.mitigatedDamage = ctx.baseDamage - Math.Max(0f, ctx.def);
-
-            // --- Clamp: MIN DAMAGE = 0 (your rule) ---
-            ctx.finalDamage = ctx.mitigatedDamage;
-            if (ctx.finalDamage < 0f) ctx.finalDamage = 0f;
+            // DEF subtracts flat damage, but cannot reduce a positive hit below 10%.
+            float nonNegativeBaseDamage = Math.Max(0f, ctx.baseDamage);
+            ctx.mitigatedDamage = nonNegativeBaseDamage - Math.Max(0f, ctx.def);
+            ctx.finalDamage = Math.Max(nonNegativeBaseDamage * 0.1f, ctx.mitigatedDamage);
 
             // --- Apply to ResourcePool ---
             if (ctx.finalDamage > 0f)
@@ -123,6 +121,8 @@ namespace TTH.Combat.Runtime
             ctx.defenderHPAfter = hit.Defender.Resources.CurrentHP;
             ctx.didDamage = ctx.finalDamage > 0f;
             ctx.didKill = hit.Defender.Resources.IsDead;
+            if (ctx.didDamage)
+                hit.Defender.VitalCombat?.RegisterDamage(ctx.finalDamage);
 
             // --- Proc_AfterHit (Phase B plugs in) ---
             try

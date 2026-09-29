@@ -6,6 +6,7 @@ using TTH.Game.Inventory;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using System.Collections.Generic;
+using System.Text;
 
 public class InventoryView : UIView
 {
@@ -24,18 +25,35 @@ public class InventoryView : UIView
 	[SerializeField] private TMP_Text capacityText;
 	[SerializeField] private GameObject itemContextMenu;
 	[SerializeField] private Button equipButton;
+	[SerializeField] private Button infoButton;
 	[SerializeField] private Button consumeButton;
 	[SerializeField] private Button unequipButton;
 	[SerializeField] private Button deleteButton;
 	[SerializeField] private Button removeButton;
+	[SerializeField] private GameObject itemInfoPanel;
+	[SerializeField] private TMP_Text itemInfoTitle;
+	[SerializeField] private TMP_Text itemInfoText;
+	[SerializeField] private Button closeItemInfoButton;
+	[SerializeField, Min(1f)] private float selectedTabScale = 1.08f;
 
 	private bool subscribed;
 	private readonly List<InventoryItemSlot> itemSlots = new();
 	private readonly List<InventoryItemSlot> equippedSlots = new();
+	private readonly List<InventoryTabBinding> inventoryTabs = new();
 	private GameObject contextMenu;
 	private InventoryItemSlot selectedSlot;
 	private ItemInstance selectedItem;
 	private string selectedEquipmentSlot;
+	private int selectedTabIndex = -1;
+
+	private sealed class InventoryTabBinding
+	{
+		public Button Button;
+		public TMP_Text Label;
+		public GameObject Content;
+		public Vector3 BaseScale;
+		public FontStyles BaseFontStyle;
+	}
 
 	private void Awake()
 	{
@@ -48,18 +66,82 @@ public class InventoryView : UIView
 			capacityText = CreateCapacityText();
 		PrepareItemSlots();
 		PrepareEquippedSlots();
+		InitializeInventoryTabs();
+		InitializeItemInfoPanel();
 		InitializeContextMenu();
 	}
 
 	public override void OnShown()
 	{
+		SelectInventoryTab("Equipment");
 		Subscribe();
 		Refresh();
+	}
+
+	private void InitializeInventoryTabs()
+	{
+		foreach (var button in GetComponentsInChildren<Button>(true))
+		{
+			var label = button.GetComponentInChildren<TMP_Text>(true);
+			if (label == null)
+				continue;
+
+			string contentName = label.text switch
+			{
+				"Equipment" => "Main Inventory Content",
+				"Ability" => "Ability Content",
+				"Passive Tree" => "Passive Tree Content",
+				_ => null
+			};
+			if (contentName == null)
+				continue;
+
+			var content = FindChild(contentName)?.gameObject;
+			if (content == null)
+				continue;
+
+			var tab = new InventoryTabBinding
+			{
+				Button = button,
+				Label = label,
+				Content = content,
+				BaseScale = button.transform.localScale,
+				BaseFontStyle = label.fontStyle
+			};
+			int tabIndex = inventoryTabs.Count;
+			inventoryTabs.Add(tab);
+			button.onClick.AddListener(() => SelectInventoryTab(tabIndex));
+		}
+	}
+
+	private void SelectInventoryTab(string tabName)
+	{
+		int tabIndex = inventoryTabs.FindIndex(tab => tab.Label.text == tabName);
+		SelectInventoryTab(tabIndex);
+	}
+
+	private void SelectInventoryTab(int tabIndex)
+	{
+		if (tabIndex < 0 || tabIndex >= inventoryTabs.Count)
+			return;
+
+		selectedTabIndex = tabIndex;
+		for (int i = 0; i < inventoryTabs.Count; i++)
+		{
+			var tab = inventoryTabs[i];
+			bool isSelected = i == selectedTabIndex;
+			tab.Content.SetActive(isSelected);
+			tab.Label.fontStyle = isSelected
+				? tab.BaseFontStyle | FontStyles.Bold
+				: tab.BaseFontStyle;
+			tab.Button.transform.localScale = tab.BaseScale * (isSelected ? selectedTabScale : 1f);
+		}
 	}
 
 	public override void OnHide()
 	{
 		Unsubscribe();
+		CloseItemInfoPanel();
 	}
 
 	private void OnDestroy()
@@ -308,6 +390,8 @@ public class InventoryView : UIView
 
 		if (equipButton == null)
 			equipButton = FindButton(contextMenu.transform, "Equip Btn");
+		if (infoButton == null)
+			infoButton = FindButton(contextMenu.transform, "Info Btn");
 		if (consumeButton == null)
 			consumeButton = FindButton(contextMenu.transform, "Consume Btn");
 		if (unequipButton == null)
@@ -318,6 +402,7 @@ public class InventoryView : UIView
 			removeButton = FindButton(contextMenu.transform, "Remove Btn");
 
 		BindButton(equipButton, EquipSelected);
+		BindButton(infoButton, ShowSelectedItemInfo);
 		BindButton(consumeButton, ConsumeSelected);
 		BindButton(unequipButton, UnequipSelected);
 		BindButton(deleteButton, DeleteSelected);
@@ -360,6 +445,110 @@ public class InventoryView : UIView
 		return null;
 	}
 
+	private void InitializeItemInfoPanel()
+	{
+		if (itemInfoPanel == null)
+			itemInfoPanel = FindChild("ItemInfoPanel")?.gameObject;
+
+		if (itemInfoPanel == null)
+		{
+			Debug.LogWarning("Assign the ItemInfoPanel GameObject in the InventoryView Inspector.", this);
+			return;
+		}
+
+		if (closeItemInfoButton != null)
+			BindButton(closeItemInfoButton, CloseItemInfoPanel);
+
+		itemInfoPanel.SetActive(false);
+	}
+
+	private void ShowSelectedItemInfo()
+	{
+		if (selectedItem?.Definition == null || itemInfoPanel == null || itemInfoTitle == null || itemInfoText == null)
+			return;
+
+		var item = selectedItem;
+		var definition = item.Definition;
+		itemInfoTitle.text = string.IsNullOrWhiteSpace(definition.displayName) ? definition.name : definition.displayName;
+
+		var details = new StringBuilder();
+		details.AppendLine(string.IsNullOrWhiteSpace(definition.description) ? "No description." : definition.description);
+		details.AppendLine();
+		details.AppendLine($"Type: {definition.itemType}");
+		details.AppendLine($"Rarity: {(item.RandomAffixes.Count > 0 ? item.RolledRarity : definition.rarity)}");
+		details.AppendLine($"Quantity: {item.Quantity}");
+		if (definition.IsEquipment)
+			details.AppendLine($"Ability slots: {item.AbilityLoadout?.slotCount ?? 1}");
+		if (definition.IsWeapon)
+		{
+			details.AppendLine($"Weapon: {definition.weaponType}");
+			details.AppendLine($"Damage: {definition.WeaponDamageMin}-{definition.WeaponDamageMax}");
+			details.AppendLine($"Range: {definition.WeaponRange:0.##} tiles");
+		}
+		if (item.IsBound)
+			details.AppendLine("Bound");
+
+		if (definition.equippedModifiers != null && definition.equippedModifiers.Length > 0)
+		{
+			details.AppendLine();
+			details.AppendLine("Equipment modifiers:");
+			foreach (var modifier in definition.equippedModifiers)
+			{
+				if (modifier == null)
+					continue;
+				string value = modifier.Op == ModifierOp.Multiply
+					? $"{modifier.Value:+0.#%;-0.#%;0%}"
+					: $"{modifier.Value:+0.#;-0.#;0}";
+				details.AppendLine($"{modifier.Attribute}: {value}");
+			}
+		}
+
+		if (item.RandomAffixes.Count > 0)
+		{
+			details.AppendLine();
+			details.AppendLine("Affixes:");
+			foreach (var affix in item.RandomAffixes)
+			{
+				if (affix != null)
+					details.AppendLine($"{affix.displayName}: {affix.FormatValue()}");
+			}
+		}
+
+		itemInfoText.text = details.ToString();
+		CloseContextMenu();
+		itemInfoPanel.transform.SetAsLastSibling();
+		itemInfoPanel.SetActive(true);
+		ResizeItemInfoPanelToContent();
+	}
+
+	private void ResizeItemInfoPanelToContent()
+	{
+		var panelRect = itemInfoPanel.GetComponent<RectTransform>();
+		var backgroundRect = itemInfoPanel.transform.Find("Bg") as RectTransform;
+		if (panelRect == null || backgroundRect == null)
+			return;
+
+		Canvas.ForceUpdateCanvases();
+		LayoutRebuilder.ForceRebuildLayoutImmediate(backgroundRect);
+		float preferredHeight = LayoutUtility.GetPreferredHeight(backgroundRect);
+		if (preferredHeight <= 0f)
+			return;
+
+		var canvas = itemInfoPanel.GetComponentInParent<Canvas>()?.rootCanvas;
+		var canvasRect = canvas != null ? canvas.transform as RectTransform : null;
+		if (canvasRect != null)
+			preferredHeight = Mathf.Min(preferredHeight, Mathf.Max(1f, canvasRect.rect.height - 80f));
+
+		panelRect.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, preferredHeight);
+		LayoutRebuilder.MarkLayoutForRebuild(panelRect);
+	}
+
+	private void CloseItemInfoPanel()
+	{
+		if (itemInfoPanel != null)
+			itemInfoPanel.SetActive(false);
+	}
+
 	private void ShowContextMenu(InventoryItemSlot slot)
 	{
 		if (slot == null || slot.Item?.Definition == null || contextMenu == null)
@@ -370,12 +559,14 @@ public class InventoryView : UIView
 		selectedEquipmentSlot = FindEquippedSlot(slot);
 
 		SetButtonActive(equipButton, false);
+		SetButtonActive(infoButton, false);
 		SetButtonActive(consumeButton, false);
 		SetButtonActive(unequipButton, false);
 		SetButtonActive(deleteButton, false);
 		SetButtonActive(removeButton, false);
 
 		var visibleButtons = new List<Button>();
+		AddVisibleButton(visibleButtons, infoButton);
 		if (!string.IsNullOrEmpty(selectedEquipmentSlot))
 		{
 			AddVisibleButton(visibleButtons, unequipButton);
@@ -488,6 +679,7 @@ public class InventoryView : UIView
 		selectedItem = null;
 		selectedEquipmentSlot = null;
 		SetButtonActive(equipButton, false);
+		SetButtonActive(infoButton, false);
 		SetButtonActive(consumeButton, false);
 		SetButtonActive(unequipButton, false);
 		SetButtonActive(deleteButton, false);

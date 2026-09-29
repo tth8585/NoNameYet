@@ -125,12 +125,14 @@ namespace TTH.Combat.Simulation
 
         private static void ApplyRegen(CombatEntity e, float dt)
         {
-            if (e == null || e.Resources == null || e.Derived == null) return;
+            if (e == null) return;
+            float regenMultiplier = e.VitalCombat?.Advance(dt) ?? 1f;
+            if (e.Resources == null || e.Derived == null) return;
             if (e.Resources.IsDead) return;
 
             // DerivedStatSystem is lazy; calling Get ensures it recalculates when attr/status versions changed.
-            float hpPerSec = Mathf.Max(0f, e.Derived.Get(DerivedStatId.HPRegen));
-            float mpPerSec = Mathf.Max(0f, e.Derived.Get(DerivedStatId.MPRegen));
+            float hpPerSec = Mathf.Max(0f, e.Derived.Get(DerivedStatId.HPRegen)) * regenMultiplier;
+            float mpPerSec = Mathf.Max(0f, e.Derived.Get(DerivedStatId.MPRegen)) * regenMultiplier;
 
             if (hpPerSec > 0f) e.Resources.ApplyHPDelta(hpPerSec * dt);
             if (mpPerSec > 0f) e.Resources.ApplyMPDelta(mpPerSec * dt);

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using TTH.Combat.Attributes;
+using TTH.Combat.Ability;
 
 namespace TTH.Game.Inventory
 {
@@ -48,42 +49,6 @@ namespace TTH.Game.Inventory
         public bool IsValid => !string.IsNullOrEmpty(affixId) &&
                                !string.IsNullOrEmpty(affixFamilyId) &&
                                tiers != null && tiers.Length > 0;
-    }
-
-    [Serializable]
-    public sealed class RandomAffixRules
-    {
-        [Min(1)] public int minRandomAffixes = 1;
-        [Min(0)] public int maxRandomAffixes = 4;
-        [Min(0)] public int minPrefixAffixes;
-        [Min(0)] public int maxPrefixAffixes = 2;
-        [Min(0)] public int minSuffixAffixes;
-        [Min(0)] public int maxSuffixAffixes = 2;
-
-        public bool IsValid(out string error)
-        {
-            if (minRandomAffixes > maxRandomAffixes)
-            {
-                error = "Minimum random affixes cannot exceed maximum.";
-                return false;
-            }
-
-            if (minPrefixAffixes > maxPrefixAffixes || minSuffixAffixes > maxSuffixAffixes)
-            {
-                error = "Affix slot minimum cannot exceed maximum.";
-                return false;
-            }
-
-            if (maxPrefixAffixes + maxSuffixAffixes < minRandomAffixes ||
-                minPrefixAffixes + minSuffixAffixes > maxRandomAffixes)
-            {
-                error = "Affix count rules cannot produce a valid total.";
-                return false;
-            }
-
-            error = string.Empty;
-            return true;
-        }
     }
 
     [Serializable]
@@ -148,16 +113,75 @@ namespace TTH.Game.Inventory
                 return ItemRollResult.Failed(prefixError);
             if (!RollSlot(definition, AffixSlotType.Suffix, suffixCount, random, rolls, out string suffixError))
                 return ItemRollResult.Failed(suffixError);
+            if (!TryRollAbilitySlotCount(definition, random, out int abilitySlotCount, out string loadoutError))
+                return ItemRollResult.Failed(loadoutError);
 
-            var item = new ItemInstance(definition, 1, BuildStateKey(rolls), false, rolls, rollSeed,
-                GetRarityForAffixCount(totalCount));
+            var abilityLoadout = new AbilityLoadout { slotCount = abilitySlotCount };
+            var item = new ItemInstance(definition, 1, BuildStateKey(rolls, abilitySlotCount), false, rolls, rollSeed,
+                GetRarityForAffixCount(totalCount), abilityLoadout);
             return ItemRollResult.Succeeded(item);
         }
 
-        private static bool TryRollSlotCounts(RandomAffixRules rules, System.Random random,
+        private static bool TryRollAbilitySlotCount(ItemDefinitionSO definition, System.Random random,
+            out int slotCount, out string error)
+        {
+            var rules = definition.abilitySlotRules;
+            int minimum = rules == null ? 1 : rules.minSlotCount;
+            int maximum = rules == null ? 1 : rules.maxSlotCount;
+            if (rules != null && !rules.IsValid(out error))
+            {
+                slotCount = 0;
+                return false;
+            }
+
+            float totalWeight = 0f;
+            for (int count = minimum; count <= maximum; count++)
+            {
+                float weight = GetAbilitySlotWeight(rules, count);
+                if (weight < 0f || float.IsNaN(weight) || float.IsInfinity(weight))
+                {
+                    slotCount = 0;
+                    error = "Ability slot weights must be finite and non-negative.";
+                    return false;
+                }
+                totalWeight += weight;
+            }
+
+            if (totalWeight <= 0f)
+            {
+                slotCount = 0;
+                error = "At least one configured ability slot count must have a positive weight.";
+                return false;
+            }
+
+            double roll = random.NextDouble() * totalWeight;
+            slotCount = maximum;
+            for (int count = minimum; count <= maximum; count++)
+            {
+                roll -= GetAbilitySlotWeight(rules, count);
+                if (roll < 0d)
+                {
+                    slotCount = count;
+                    break;
+                }
+            }
+
+            error = string.Empty;
+            return true;
+        }
+
+        private static float GetAbilitySlotWeight(AbilitySlotRulesSO rules, int slotCount)
+        {
+            if (rules != null && rules.weightProfile != null)
+                return rules.weightProfile.GetWeightForSlotCount(slotCount);
+
+            return Mathf.Pow(0.5f, slotCount - 1);
+        }
+
+        private static bool TryRollSlotCounts(RandomAffixRulesSO rules, System.Random random,
             out int prefixCount, out int suffixCount, out string error)
         {
-            var validCounts = new List<Vector2Int>();
+            var validCounts = new SortedDictionary<int, List<Vector2Int>>();
             for (int prefix = rules.minPrefixAffixes; prefix <= rules.maxPrefixAffixes; prefix++)
             {
                 for (int suffix = rules.minSuffixAffixes; suffix <= rules.maxSuffixAffixes; suffix++)
@@ -165,19 +189,40 @@ namespace TTH.Game.Inventory
                     int total = prefix + suffix;
                     if (total >= rules.minRandomAffixes && total <= rules.maxRandomAffixes &&
                         (total != 2 || (prefix == 1 && suffix == 1)))
-                        validCounts.Add(new Vector2Int(prefix, suffix));
+                    {
+                        if (!validCounts.TryGetValue(total, out var combinations))
+                        {
+                            combinations = new List<Vector2Int>();
+                            validCounts.Add(total, combinations);
+                        }
+                        combinations.Add(new Vector2Int(prefix, suffix));
+                    }
                 }
             }
 
-            if (validCounts.Count == 0)
+            float totalWeight = validCounts.Sum(pair => rules.GetCountWeight(pair.Key));
+            if (totalWeight <= 0f)
             {
                 prefixCount = 0;
                 suffixCount = 0;
-                error = "No prefix/suffix count satisfies the configured affix rules.";
+                error = "No weighted prefix/suffix count satisfies the configured affix rules.";
                 return false;
             }
 
-            Vector2Int selected = validCounts[random.Next(validCounts.Count)];
+            double roll = random.NextDouble() * totalWeight;
+            int selectedTotal = validCounts.Keys.Last();
+            foreach (var pair in validCounts)
+            {
+                roll -= rules.GetCountWeight(pair.Key);
+                if (roll < 0d)
+                {
+                    selectedTotal = pair.Key;
+                    break;
+                }
+            }
+
+            var validCombinations = validCounts[selectedTotal];
+            Vector2Int selected = validCombinations[random.Next(validCombinations.Count)];
             prefixCount = selected.x;
             suffixCount = selected.y;
             error = string.Empty;
@@ -256,9 +301,10 @@ namespace TTH.Game.Inventory
             return tiers.Last(tier => tier != null && tier.weight > 0f);
         }
 
-        private static string BuildStateKey(IEnumerable<RolledAffix> rolls)
+        private static string BuildStateKey(IEnumerable<RolledAffix> rolls, int abilitySlotCount)
         {
-            return string.Join("|", rolls.Select(roll => $"{roll.affixFamilyId}:{roll.tierId}:{roll.value:0.###}"));
+            string affixState = string.Join("|", rolls.Select(roll => $"{roll.affixFamilyId}:{roll.tierId}:{roll.value:0.###}"));
+            return $"{affixState}|abilitySlots:{abilitySlotCount}";
         }
     }
 }

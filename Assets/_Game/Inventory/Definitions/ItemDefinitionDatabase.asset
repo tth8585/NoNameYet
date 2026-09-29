@@ -14,3 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::TTH.Game.Inventory.ItemDefinitionDatabaseSO
   definitions:
   - {fileID: 11400000, guid: a77885d98848e4544b1ee8a76b374da9, type: 2}
+  - {fileID: 11400000, guid: 061cd192df0364d4587d7d940628a8b6, type: 2}
+  - {fileID: 11400000, guid: 8b2aa6d36ceee8c42a6992fd13eab15a, type: 2}
+  - {fileID: 11400000, guid: 3f44d5122f48bcb439edb90436ad3694, type: 2}
